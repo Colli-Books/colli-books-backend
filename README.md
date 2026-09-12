@@ -55,14 +55,12 @@ docker compose logs -f backend
 
 ## Serviços disponíveis
 
-| Serviço      | URL                                  | Credenciais                 |
-|--------------|--------------------------------------|-----------------------------|
-| Backend      | http://localhost:8000                | —                           |
-| Swagger UI   | http://localhost:8000/docs           | —                           |
-| ReDoc        | http://localhost:8000/redoc          | —                           |
-| OpenAPI JSON | http://localhost:8000/openapi.json   | —                           |
-| pgAdmin      | http://localhost:5050                | `admin@colli.com` / `admin` |
-| Postgres     | `localhost:5432`                     | `postgres` / `postgres`     |
+| Serviço    | URL                        | Credenciais                 |
+|------------|----------------------------|-----------------------------|
+| Backend    | http://localhost:8000      | —                           |
+| Swagger UI | http://localhost:8000/docs | —                           |
+| pgAdmin    | http://localhost:5050      | `admin@colli.com` / `admin` |
+| Postgres   | `localhost:5432`           | `postgres` / `postgres`     |
 
 ## Documentação da API
 
@@ -70,14 +68,9 @@ A documentação é gerada automaticamente pelo FastAPI a partir do código, seg
 padrão [OpenAPI 3.1](https://www.openapis.org/). Não é preciso escrever nem manter
 nada à mão: ao adicionar um endpoint, ele aparece na página sozinho.
 
-Com os containers no ar, acesse:
-
-- **http://localhost:8000/docs** — Swagger UI. Lista todos os endpoints agrupados por
-  tag e permite **executar** as requisições direto do navegador (botão *Try it out*).
-- **http://localhost:8000/redoc** — ReDoc. Mesma informação, layout de leitura,
-  bom para consulta e para imprimir/exportar.
-- **http://localhost:8000/openapi.json** — o esquema OpenAPI bruto, usado para gerar
-  clientes (`openapi-generator`), importar no Postman/Insomnia, etc.
+Com os containers no ar, acesse **http://localhost:8000/docs** (Swagger UI). A página
+lista todos os endpoints agrupados por tag e permite **executar** as requisições direto
+do navegador, pelo botão *Try it out*.
 
 ### Endpoints
 
@@ -148,18 +141,3 @@ docker compose exec db psql -U postgres -d colli_books
 # ver o status dos serviços
 docker compose ps
 ```
-
-## Observações
-
-- O diretório `./app` é montado como volume no container do backend e o `uvicorn` roda com `--reload`, então alterações no código são aplicadas automaticamente.
-- O backend só inicia depois que o healthcheck do Postgres passa (`depends_on: service_healthy`).
-- Os dados do Postgres e do pgAdmin persistem nos volumes `postgres_data` e `pgadmin_data`.
-- As credenciais padrão servem apenas para desenvolvimento local. Troque-as no `.env` antes de qualquer uso real.
-
-## Solução de problemas
-
-**Porta já em uso** (`port is already allocated`): altere `POSTGRES_PORT`, `PGADMIN_PORT` ou `BACKEND_PORT` no `.env` e suba novamente.
-
-**pgAdmin não conecta**: confirme que usou `db` como host, e não `localhost`. Dentro da rede do Docker, `localhost` aponta para o próprio container do pgAdmin.
-
-**Backend não sobe**: veja os logs com `docker compose logs backend` e confirme que o serviço `db` está *healthy* com `docker compose ps`.

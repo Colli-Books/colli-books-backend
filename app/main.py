@@ -13,11 +13,8 @@ DESCRIPTION = """
 API do projeto **Colli Books**.
 
 Esta documentação é gerada automaticamente a partir do código pelo padrão
-[OpenAPI](https://www.openapis.org/) e está disponível em três formatos:
-
-- **Swagger UI** — `/docs` (interativa, permite executar as requisições)
-- **ReDoc** — `/redoc` (leitura)
-- **OpenAPI JSON** — `/openapi.json` (esquema bruto)
+[OpenAPI](https://www.openapis.org/) e fica disponível em `/docs`, onde é possível
+executar as requisições direto do navegador.
 """
 
 TAGS_METADATA = [
@@ -39,8 +36,7 @@ app = FastAPI(
     contact={"name": "Colli Books", "email": "admin@colli.com"},
     license_info={"name": "MIT"},
     docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
+    redoc_url=None,
 )
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
