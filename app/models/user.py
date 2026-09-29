@@ -28,14 +28,14 @@ if TYPE_CHECKING:
     from app.models.catalog import Book, EducationLevel, Theme
 
 
-class UserRole(str, enum.Enum):
+class UserRole(enum.StrEnum):
     """Perfis do sistema. Não há auto-cadastro: quem entra é criado pela editora."""
 
     ADMIN = "admin"
     TEACHER = "teacher"
 
 
-class UserStatus(str, enum.Enum):
+class UserStatus(enum.StrEnum):
     """Estado da conta.
 
     `INVITE_PENDING` é o estado inicial da US01 — a conta existe, mas ainda não
@@ -115,9 +115,7 @@ class _SingleUseToken(TimestampMixin):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     # `used_at` preenchido distingue "já usado" de "expirado" — a US02 exige
     # mensagens diferentes para os dois casos.
-    used_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Invite(_SingleUseToken, Base):
@@ -162,8 +160,6 @@ class RefreshToken(TimestampMixin, Base):
     )
     token_hash: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    revoked_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     user: Mapped[User] = relationship(back_populates="refresh_tokens")

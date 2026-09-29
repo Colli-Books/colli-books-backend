@@ -41,12 +41,8 @@ class Theme(TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    books: Mapped[list[Book]] = relationship(
-        secondary="book_themes", back_populates="themes"
-    )
-    teachers: Mapped[list[User]] = relationship(
-        secondary="teacher_themes", back_populates="themes"
-    )
+    books: Mapped[list[Book]] = relationship(secondary="book_themes", back_populates="themes")
+    teachers: Mapped[list[User]] = relationship(secondary="teacher_themes", back_populates="themes")
 
 
 class EducationLevel(TimestampMixin, Base):
@@ -56,9 +52,7 @@ class EducationLevel(TimestampMixin, Base):
     """
 
     __tablename__ = "education_levels"
-    __table_args__ = (
-        Index("uq_education_levels_name_lower", text("lower(name)"), unique=True),
-    )
+    __table_args__ = (Index("uq_education_levels_name_lower", text("lower(name)"), unique=True),)
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
@@ -79,7 +73,9 @@ class Book(TimestampMixin, Base):
 
     __tablename__ = "books"
     __table_args__ = (
-        CheckConstraint("page_count IS NULL OR page_count > 0", name="ck_books_page_count_positive"),
+        CheckConstraint(
+            "page_count IS NULL OR page_count > 0", name="ck_books_page_count_positive"
+        ),
         Index("ix_books_education_level_id", "education_level_id"),
         # US07: busca por trecho do título/autor ignorando acento e caixa.
         # `immutable_unaccent` é criada na migration 0001 — `unaccent` não é
@@ -117,9 +113,7 @@ class Book(TimestampMixin, Base):
     )
 
     education_level: Mapped[EducationLevel | None] = relationship(back_populates="books")
-    themes: Mapped[list[Theme]] = relationship(
-        secondary="book_themes", back_populates="books"
-    )
+    themes: Mapped[list[Theme]] = relationship(secondary="book_themes", back_populates="books")
     saved_by: Mapped[list[User]] = relationship(
         secondary="saved_books", back_populates="saved_books"
     )
@@ -149,6 +143,4 @@ class InstitutionalPage(TimestampMixin, Base):
     sort_order: Mapped[int] = mapped_column(
         SmallInteger, nullable=False, default=0, server_default="0"
     )
-    is_published: Mapped[bool] = mapped_column(
-        nullable=False, default=True, server_default="true"
-    )
+    is_published: Mapped[bool] = mapped_column(nullable=False, default=True, server_default="true")

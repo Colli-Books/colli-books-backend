@@ -3,3 +3,9 @@ uvicorn[standard]==0.34.0
 sqlalchemy==2.0.36
 psycopg[binary]==3.2.3
 alembic==1.14.0
+
+# Dependências de desenvolvimento/teste
+pytest==8.3.5
+pytest-cov==6.1.0
+httpx==0.28.1
+ruff==0.9.10
