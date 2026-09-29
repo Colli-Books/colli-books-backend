@@ -1,13 +1,8 @@
-import os
-
 from fastapi import FastAPI, Response, status
 from pydantic import BaseModel, Field
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+psycopg://postgres:postgres@db:5432/colli_books",
-)
+from app.database import engine
 
 DESCRIPTION = """
 API do projeto **Colli Books**.
@@ -38,8 +33,6 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url=None,
 )
-
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
 
 class HelloResponse(BaseModel):

@@ -1,6 +1,6 @@
 # Colli Books Backend
 
-Ambiente Docker com **PostgreSQL**, **pgAdmin** e um **backend FastAPI** (hello world).
+Ambiente Docker com **PostgreSQL** e um **backend FastAPI** (hello world).
 
 ## Pré-requisitos
 
@@ -20,9 +20,18 @@ docker compose version
 colli-books-backend/
 ├── app/
 │   ├── __init__.py
-│   └── main.py           # aplicação FastAPI
+│   ├── main.py           # aplicação FastAPI
+│   ├── database.py       # engine, sessão e Base do SQLAlchemy
+│   └── models/           # modelo físico (SQLAlchemy)
+│       ├── user.py       # users, invites, password_reset_tokens, refresh_tokens
+│       ├── catalog.py    # books, themes, education_levels, institutional_pages
+│       └── links.py      # tabelas de associação
+├── alembic/
+│   ├── env.py
+│   └── versions/         # migrations versionadas
+├── alembic.ini
 ├── Dockerfile            # imagem do backend
-├── docker-compose.yml    # orquestra db + pgadmin + backend
+├── docker-compose.yml    # orquestra db + backend
 ├── requirements.txt      # dependências Python
 └── .env.example          # variáveis de ambiente de exemplo
 ```
@@ -47,7 +56,13 @@ Use `-d` para rodar em segundo plano:
 docker compose up --build -d
 ```
 
-3. Acompanhe os logs (se estiver em segundo plano):
+3. Crie as tabelas aplicando as migrations:
+
+```bash
+docker compose exec backend alembic upgrade head
+```
+
+4. Acompanhe os logs (se estiver em segundo plano):
 
 ```bash
 docker compose logs -f backend
@@ -59,7 +74,6 @@ docker compose logs -f backend
 |------------|----------------------------|-----------------------------|
 | Backend    | http://localhost:8000      | —                           |
 | Swagger UI | http://localhost:8000/docs | —                           |
-| pgAdmin    | http://localhost:5050      | `admin@colli.com` / `admin` |
 | Postgres   | `localhost:5432`           | `postgres` / `postgres`     |
 
 ## Documentação da API
@@ -107,18 +121,77 @@ Os metadados da página ficam em `app/main.py`:
 - Os modelos Pydantic (`HelloResponse`, `HealthResponse`) viram os *schemas* exibidos
   no rodapé da página, com os exemplos definidos em `Field(..., examples=[...])`.
 
-### Conectando o pgAdmin ao Postgres
+## Banco de dados
 
-1. Acesse http://localhost:5050 e faça login com as credenciais acima.
-2. Clique com o botão direito em **Servers** → **Register** → **Server...**
-3. Aba **General**: `Name` = `colli-books`
-4. Aba **Connection**:
-   - Host name/address: `db`  ← nome do serviço no compose, **não** use `localhost`
-   - Port: `5432`
-   - Maintenance database: `colli_books`
-   - Username: `postgres`
-   - Password: `postgres` (marque *Save password*)
-5. **Save**.
+O modelo físico é definido em `app/models/` (SQLAlchemy 2.0) e materializado no
+PostgreSQL pelas migrations do **Alembic**, em `alembic/versions/`. Os models são a
+fonte de verdade: nenhuma tabela é criada à mão no banco.
+
+### Tabelas
+
+| Tabela | Para que serve | Estórias |
+|---|---|---|
+| `users` | Contas de professor e administrador, diferenciadas por `role` | US01, US03, US05, US10 |
+| `invites` | Tokens de convite de primeiro acesso (uso único) | US01, US02 |
+| `password_reset_tokens` | Tokens de "Esqueci minha senha" (uso único) | US04, US06 |
+| `refresh_tokens` | Refresh tokens revogáveis, para o logout encerrar a sessão | US03 |
+| `books` | Obras do acervo | US09, US15 |
+| `themes` | Temas cadastrados pela editora | US16 |
+| `education_levels` | Escolaridades cadastradas pela editora | US16 |
+| `book_themes` | Vínculo obra ↔ temas (N:N) | US17 |
+| `teacher_themes` | Temas que o professor leciona (N:N) | US11 |
+| `teacher_education_levels` | Escolaridades que o professor atende (N:N) | US11 |
+| `saved_books` | "Minha Seleção" do professor (N:N) | US12 |
+| `institutional_pages` | Seções institucionais do menu lateral | US18 |
+
+### Regras garantidas pelo próprio banco
+
+Algumas regras do backlog são invariantes de dado, não de aplicação, e por isso valem
+como constraint — um bug na API não consegue furá-las:
+
+| Constraint | Regra |
+|---|---|
+| `ck_users_active_requires_password` | Conta `active` sem hash de senha não existe (US01: enquanto a senha não for definida, o login é bloqueado). |
+| `ck_users_email_lowercase` | E-mail sempre normalizado em minúsculas, o que torna a UNIQUE insensível a caixa. |
+| `uq_themes_name_lower` / `uq_education_levels_name_lower` | Nomes duplicados ignorando maiúsculas/minúsculas são rejeitados (US16). |
+| `fk_books_education_level_id...ON DELETE SET NULL` | Apagar uma escolaridade não apaga obras; a obra permanece no acervo sem escolaridade (US17). |
+| `ck_institutional_pages_has_content` | Uma seção institucional tem conteúdo próprio ou aponta para uma URL externa — nunca nenhum dos dois (US18). |
+
+### Busca sem acento (US07)
+
+A US07 exige busca por título ignorando acentuação e caixa. `unaccent` não é `IMMUTABLE`
+e por isso não pode ser indexada diretamente; a migration inicial cria o wrapper
+`immutable_unaccent(text)` e índices GIN/trigram sobre `immutable_unaccent(lower(title))`
+e `immutable_unaccent(lower(author))`. A consulta correspondente é:
+
+```sql
+SELECT * FROM books
+WHERE immutable_unaccent(lower(title)) LIKE '%' || immutable_unaccent(lower(:termo)) || '%';
+```
+
+### Migrations
+
+```bash
+# aplicar todas as migrations pendentes
+docker compose exec backend alembic upgrade head
+
+# gerar uma nova migration a partir das mudanças nos models
+docker compose exec backend alembic revision --autogenerate -m "descricao da mudanca"
+
+# conferir se os models e o banco estão sincronizados
+docker compose exec backend alembic check
+
+# ver a revisão aplicada no banco
+docker compose exec backend alembic current
+
+# desfazer a última migration
+docker compose exec backend alembic downgrade -1
+```
+
+> **Atenção:** sempre revise o arquivo gerado pelo `--autogenerate` antes de aplicar. O
+> Alembic não detecta renomeações (vê como *drop* + *create*, o que apaga dados) e não
+> compara índices funcionais que usam classe de operador.
+
 
 ## Comandos úteis
 
