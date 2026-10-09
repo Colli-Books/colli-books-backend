@@ -7,9 +7,9 @@ continuam funcionando.
 
 from fastapi import APIRouter
 
+from app.routers import auth
+
 API_V1_PREFIX = "/api/v1"
 
 api_router = APIRouter(prefix=API_V1_PREFIX)
-
-# Os routers de auth, convites e admin entram aqui nas próximas fases:
-# api_router.include_router(auth.router)
+api_router.include_router(auth.router)
