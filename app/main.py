@@ -33,6 +33,10 @@ TAGS_METADATA = [
         "description": "Login, renovação de sessão, logout e dados do usuário logado.",
     },
     {
+        "name": "Convites",
+        "description": "Primeiro acesso do professor a partir do link de convite.",
+    },
+    {
         "name": "Admin",
         "description": "Rotas exclusivas da editora (papel `admin`).",
     },

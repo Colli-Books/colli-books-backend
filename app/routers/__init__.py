@@ -7,10 +7,11 @@ continuam funcionando.
 
 from fastapi import APIRouter
 
-from app.routers import admin, auth
+from app.routers import admin, auth, invites
 
 API_V1_PREFIX = "/api/v1"
 
 api_router = APIRouter(prefix=API_V1_PREFIX)
 api_router.include_router(auth.router)
+api_router.include_router(invites.router)
 api_router.include_router(admin.router)
