@@ -18,6 +18,8 @@ ignore = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]
+# A pasta alembic/ do projeto confunde a detecção; o import é do pacote instalado.
+known-third-party = ["alembic"]
 
 [tool.ruff.format]
 quote-style = "double"

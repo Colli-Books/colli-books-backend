@@ -3,6 +3,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import text
 
 from app.database import engine
+from app.errors import register_error_handlers
+from app.rate_limit import register_rate_limit
+from app.routers import api_router
 
 DESCRIPTION = """
 API do projeto **Colli Books**.
@@ -10,6 +13,10 @@ API do projeto **Colli Books**.
 Esta documentação é gerada automaticamente a partir do código pelo padrão
 [OpenAPI](https://www.openapis.org/) e fica disponível em `/docs`, onde é possível
 executar as requisições direto do navegador.
+
+As rotas de negócio ficam sob `/api/v1`. Todo erro segue o formato
+`{"code": "...", "message": "...", "details": ...}`, em que `code` é estável e
+pode ser usado pelo app para decidir o que mostrar.
 """
 
 TAGS_METADATA = [
@@ -33,6 +40,10 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url=None,
 )
+
+register_error_handlers(app)
+register_rate_limit(app)
+app.include_router(api_router)
 
 
 class HelloResponse(BaseModel):
