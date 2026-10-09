@@ -102,6 +102,8 @@ do navegador, pelo botão *Try it out*.
 | `POST` | `/api/v1/auth/refresh` | Auth | Troca o refresh token por um par novo (rotação) | `200`, `401` |
 | `POST` | `/api/v1/auth/logout` | Auth | Revoga o refresh token | `204` |
 | `GET`  | `/api/v1/auth/me` | Auth | Dados e papel do usuário logado (US05) | `200`, `401` |
+| `POST` | `/api/v1/admin/teachers` | Admin | Cadastra professor e devolve o link de convite (US01) | `201`, `401`, `403`, `409` |
+| `POST` | `/api/v1/admin/teachers/{id}/invite` | Admin | Gera novo convite e invalida o anterior | `200`, `401`, `403`, `404`, `409` |
 
 ### Testando o backend
 
