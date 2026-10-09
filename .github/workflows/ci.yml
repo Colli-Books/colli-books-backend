@@ -39,6 +39,25 @@ jobs:
     runs-on: ubuntu-latest
     needs: lint
 
+    # Os testes de integração precisam de PostgreSQL real (unaccent, pg_trgm, GIN).
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/colli_books_test
+
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
@@ -50,7 +69,7 @@ jobs:
           cache: "pip"
 
       - name: Instalar dependências
-        run: pip install -r requirements.txt
+        run: pip install -r requirements-dev.txt
 
       - name: Executar testes com cobertura
         run: pytest --cov=app --cov-report=term-missing
