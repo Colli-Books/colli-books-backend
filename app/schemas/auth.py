@@ -26,3 +26,12 @@ class TokenResponse(BaseModel):
         ..., description="Validade do access token, em segundos.", examples=[900]
     )
     user: UserResponse
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr = Field(..., examples=["professor@escola.com"])
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(..., min_length=1, description="Token do link ou código colado no app.")
+    new_password: str = Field(..., examples=["minha-senha-nova"])
