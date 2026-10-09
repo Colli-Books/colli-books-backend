@@ -29,13 +29,13 @@ os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 os.environ["APP_ENV"] = "test"
 os.environ["RATE_LIMIT_ENABLED"] = "false"
 
+from alembic import command  # noqa: E402
+from alembic.config import Config  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import create_engine, text  # noqa: E402
 from sqlalchemy.engine import make_url  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
-from alembic import command  # noqa: E402
-from alembic.config import Config  # noqa: E402
 from app.database import engine, get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import User, UserRole  # noqa: E402

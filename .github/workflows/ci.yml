@@ -26,7 +26,7 @@ jobs:
           cache: "pip"
 
       - name: Instalar dependências
-        run: pip install ruff
+        run: pip install ruff==0.9.10
 
       - name: Verificar formatação (ruff format)
         run: ruff format --check .

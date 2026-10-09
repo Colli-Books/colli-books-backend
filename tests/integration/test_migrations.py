@@ -1,10 +1,10 @@
 """As migrations precisam produzir exatamente o schema descrito pelos models."""
 
+from alembic.autogenerate import compare_metadata
+from alembic.migration import MigrationContext
 from sqlalchemy.orm import Session
 
 import app.models  # noqa: F401  (registra todos os models no metadata)
-from alembic.autogenerate import compare_metadata
-from alembic.migration import MigrationContext
 from app.database import Base
 
 
