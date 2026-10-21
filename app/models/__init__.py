@@ -1,4 +1,6 @@
-"""Importa todos os models para que o `Base.metadata` fique completo.
+"""Models (M do MVC): entidades do domínio mapeadas no SQLAlchemy.
+
+Importa todos os models para que o `Base.metadata` fique completo.
 
 O Alembic lê o metadata por este módulo; um model não importado aqui
 simplesmente não existe para as migrations.

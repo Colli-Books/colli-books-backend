@@ -1,4 +1,8 @@
-"""Routers da API de negócio, todos sob `/api/v1`.
+"""Controllers (C do MVC): recebem o HTTP, chamam o Model e devolvem a View.
+
+Cada controller é um `APIRouter` do FastAPI. Não guardam regra de negócio: só
+validam a entrada (via Views), chamam `app/services/` e traduzem o resultado.
+Todos ficam sob `/api/v1`.
 
 O prefixo versionado existe porque o app publicado na loja não é atualizado na
 hora: uma mudança incompatível vai para `/api/v2`, e as versões antigas do app
@@ -7,7 +11,7 @@ continuam funcionando.
 
 from fastapi import APIRouter
 
-from app.routers import admin, auth, invites
+from app.controllers import admin, auth, invites
 
 API_V1_PREFIX = "/api/v1"
 
