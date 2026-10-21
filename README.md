@@ -105,10 +105,10 @@ do navegador, pelo botão *Try it out*.
 | `POST` | `/api/v1/auth/forgot-password` | Auth | Envia link de redefinição de senha (US04, US06) | `202`, `429` |
 | `POST` | `/api/v1/auth/reset-password` | Auth | Troca a senha e encerra as sessões (US04, US06) | `204`, `400`, `422` |
 | `POST` | `/api/v1/invites/verify` | Convites | Confere o convite e devolve o e-mail (US02) | `200`, `404`, `409`, `410` |
-| `POST` | `/api/v1/invites/accept` | Convites | Define a senha, ativa a conta e autentica (US02) | `200`, `404`, `409`, `410`, `422` |
+| `POST` | `/api/v1/invites/accept` | Convites | Completa o cadastro (nome, escola opcional, senha), ativa a conta e autentica (US02) | `200`, `404`, `409`, `410`, `422` |
 | `POST` | `/api/v1/invites/resend` | Convites | Reenvia convite expirado por e-mail (US02) | `202` |
-| `POST` | `/api/v1/admin/teachers` | Admin | Cadastra professor e devolve o link de convite (US01) | `201`, `401`, `403`, `409` |
-| `POST` | `/api/v1/admin/teachers/{id}/invite` | Admin | Gera novo convite e invalida o anterior | `200`, `401`, `403`, `404`, `409` |
+| `POST` | `/api/v1/admin/teachers` | Admin | Cadastra professor, manda o convite por e-mail e devolve o link (US01) | `201`, `401`, `403`, `409` |
+| `POST` | `/api/v1/admin/teachers/{id}/invite` | Admin | Gera novo convite, invalida o anterior e manda por e-mail | `200`, `401`, `403`, `404`, `409` |
 
 ### Testando o backend
 
@@ -140,8 +140,8 @@ Os metadados da página ficam em `app/main.py`:
 
 ### E-mail
 
-Ainda não há provedor de e-mail. Os e-mails (reenvio de convite e redefinição de
-senha) são escritos no log do backend (`docker compose logs -f backend`), com o link
+Ainda não há provedor de e-mail. Os e-mails (convite, reenvio de convite e
+redefinição de senha) são escritos no log do backend (`docker compose logs -f backend`), com o link
 e o código. Para integrar um provedor, implemente o método `send` de
 `app/services/email.py` e devolva a nova classe em `get_email_sender`.
 

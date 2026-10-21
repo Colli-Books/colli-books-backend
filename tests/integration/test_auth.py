@@ -40,6 +40,7 @@ def test_login_com_credenciais_validas_devolve_tokens(
         "id": teacher_user.id,
         "email": teacher_user.email,
         "full_name": None,
+        "school": None,
         "role": "teacher",
         "status": "active",
     }

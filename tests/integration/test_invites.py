@@ -19,6 +19,11 @@ RESEND = "/api/v1/invites/resend"
 NEW_PASSWORD = "minha-senha-nova"
 
 
+def _accept(token: str, password: str = NEW_PASSWORD, **profile: str | None) -> dict:
+    """Corpo de `/invites/accept`; `profile` sobrescreve nome e escola."""
+    return {"token": token, "full_name": "Maria Souza", "password": password, **profile}
+
+
 @pytest.fixture()
 def pending_user(db_session: Session) -> User:
     return create_user(
@@ -66,7 +71,7 @@ def test_convite_expirado(client: TestClient, db_session: Session, invite_code: 
 
 
 def test_convite_ja_usado(client: TestClient, invite_code: str) -> None:
-    client.post(ACCEPT, json={"token": invite_code, "password": NEW_PASSWORD})
+    client.post(ACCEPT, json=_accept(invite_code))
 
     response = client.post(VERIFY, json={"token": invite_code})
 
@@ -86,25 +91,30 @@ def test_convite_de_conta_desativada_e_invalido(
 # --- Aceitar ------------------------------------------------------------------
 
 
-def test_aceitar_define_senha_ativa_conta_e_autentica(
+def test_aceitar_completa_cadastro_ativa_conta_e_autentica(
     client: TestClient, db_session: Session, pending_user: User, invite_code: str
 ) -> None:
-    response = client.post(ACCEPT, json={"token": invite_code, "password": NEW_PASSWORD})
+    response = client.post(
+        ACCEPT, json=_accept(invite_code, full_name="  Maria Souza ", school="E.E. Machado")
+    )
 
     assert response.status_code == 200
     body = response.json()
     assert body["user"]["status"] == "active"
+    assert body["user"]["full_name"] == "Maria Souza"
+    assert body["user"]["school"] == "E.E. Machado"
     me = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {body['access_token']}"})
     assert me.status_code == 200
 
     db_session.refresh(pending_user)
     assert pending_user.status == UserStatus.ACTIVE
+    assert (pending_user.full_name, pending_user.school) == ("Maria Souza", "E.E. Machado")
     invite = db_session.scalar(select(Invite).where(Invite.user_id == pending_user.id))
     assert invite.used_at is not None
 
 
 def test_depois_de_aceitar_faz_login_com_a_senha_nova(client: TestClient, invite_code: str) -> None:
-    client.post(ACCEPT, json={"token": invite_code, "password": NEW_PASSWORD})
+    client.post(ACCEPT, json=_accept(invite_code))
 
     response = client.post(
         "/api/v1/auth/login", json={"email": "convidado@escola.com", "password": NEW_PASSWORD}
@@ -114,9 +124,9 @@ def test_depois_de_aceitar_faz_login_com_a_senha_nova(client: TestClient, invite
 
 
 def test_convite_nao_pode_ser_aceito_duas_vezes(client: TestClient, invite_code: str) -> None:
-    client.post(ACCEPT, json={"token": invite_code, "password": NEW_PASSWORD})
+    client.post(ACCEPT, json=_accept(invite_code))
 
-    response = client.post(ACCEPT, json={"token": invite_code, "password": "outra-senha-999"})
+    response = client.post(ACCEPT, json=_accept(invite_code, "outra-senha-999"))
 
     assert response.status_code == 409
     assert response.json()["code"] == "INVITE_ALREADY_USED"
@@ -125,10 +135,35 @@ def test_convite_nao_pode_ser_aceito_duas_vezes(client: TestClient, invite_code:
 def test_senha_curta_responde_weak_password_e_nao_consome_o_convite(
     client: TestClient, invite_code: str
 ) -> None:
-    response = client.post(ACCEPT, json={"token": invite_code, "password": "1234567"})
+    response = client.post(ACCEPT, json=_accept(invite_code, "1234567"))
 
     assert response.status_code == 422
     assert response.json()["code"] == "WEAK_PASSWORD"
+    assert client.post(VERIFY, json={"token": invite_code}).status_code == 200
+
+
+@pytest.mark.parametrize("school", [None, "", "   "])
+def test_escola_e_opcional(client: TestClient, invite_code: str, school: str | None) -> None:
+    response = client.post(ACCEPT, json=_accept(invite_code, school=school))
+
+    assert response.status_code == 200
+    assert response.json()["user"]["school"] is None
+
+
+@pytest.mark.parametrize("full_name", [None, "", "   ", "x" * 256])
+def test_nome_obrigatorio_e_nao_consome_o_convite(
+    client: TestClient, invite_code: str, full_name: str | None
+) -> None:
+    body = _accept(invite_code)
+    if full_name is None:
+        del body["full_name"]
+    else:
+        body["full_name"] = full_name
+
+    response = client.post(ACCEPT, json=body)
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "VALIDATION_ERROR"
     assert client.post(VERIFY, json={"token": invite_code}).status_code == 200
 
 
@@ -137,7 +172,7 @@ def test_aceitar_convite_expirado_responde_410(
 ) -> None:
     _expire(db_session, invite_code)
 
-    response = client.post(ACCEPT, json={"token": invite_code, "password": NEW_PASSWORD})
+    response = client.post(ACCEPT, json=_accept(invite_code))
 
     assert response.status_code == 410
     assert response.json()["code"] == "INVITE_EXPIRED"
@@ -177,7 +212,7 @@ def test_reenviar_convite_ainda_valido_nao_faz_nada(
 def test_reenviar_convite_usado_ou_inexistente_nao_faz_nada(
     client: TestClient, invite_code: str, email_outbox: InMemoryEmailSender
 ) -> None:
-    client.post(ACCEPT, json={"token": invite_code, "password": NEW_PASSWORD})
+    client.post(ACCEPT, json=_accept(invite_code))
     used = client.post(RESEND, json={"token": invite_code})
     unknown = client.post(RESEND, json={"token": "inventado"})
 

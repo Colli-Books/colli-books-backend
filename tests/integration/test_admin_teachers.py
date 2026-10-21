@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.models import Invite, User, UserStatus
 from app.security.tokens import hash_token
 from tests.factories import auth_headers, create_user
+from tests.fakes import InMemoryEmailSender
 
 TEACHERS = "/api/v1/admin/teachers"
 
@@ -40,6 +41,29 @@ def test_admin_cadastra_professor_com_convite_pendente(
     assert user.password_hash is None
     invite = db_session.scalar(select(Invite).where(Invite.user_id == user.id))
     assert invite.token_hash == hash_token(body["invite_code"])
+
+
+def test_cadastro_manda_o_convite_para_o_email_do_professor(
+    client: TestClient, admin_user: User, email_outbox: InMemoryEmailSender
+) -> None:
+    body = _create(client, admin_user, "Novo@Escola.com").json()
+
+    [message] = email_outbox.outbox
+    assert message.to == "novo@escola.com"
+    assert "complete seu cadastro" in message.subject
+    assert body["invite_link"] in message.body
+    assert body["invite_code"] in message.body
+
+
+def test_email_duplicado_nao_manda_email(
+    client: TestClient, admin_user: User, email_outbox: InMemoryEmailSender
+) -> None:
+    _create(client, admin_user, "dup@escola.com")
+    email_outbox.outbox.clear()
+
+    _create(client, admin_user, "dup@escola.com")
+
+    assert email_outbox.outbox == []
 
 
 def test_email_duplicado_responde_409(client: TestClient, admin_user: User) -> None:
@@ -82,10 +106,11 @@ def test_convidado_nao_consegue_fazer_login(client: TestClient, admin_user: User
 # --- Gerar novo convite -------------------------------------------------------
 
 
-def test_novo_convite_substitui_o_anterior(
-    client: TestClient, db_session: Session, admin_user: User
+def test_novo_convite_substitui_o_anterior_e_vai_por_email(
+    client: TestClient, db_session: Session, admin_user: User, email_outbox: InMemoryEmailSender
 ) -> None:
     first = _create(client, admin_user).json()
+    email_outbox.outbox.clear()
 
     response = client.post(f"{TEACHERS}/{first['id']}/invite", headers=auth_headers(admin_user))
 
@@ -93,6 +118,9 @@ def test_novo_convite_substitui_o_anterior(
     assert response.json()["invite_code"] != first["invite_code"]
     hashes = db_session.scalars(select(Invite.token_hash).where(Invite.user_id == first["id"]))
     assert list(hashes) == [hash_token(response.json()["invite_code"])]
+    [message] = email_outbox.outbox
+    assert message.to == first["email"]
+    assert response.json()["invite_link"] in message.body
 
 
 def test_novo_convite_para_professor_ativo_responde_409(

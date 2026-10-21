@@ -1,4 +1,4 @@
-"""Envio de e-mails (reenvio de convite na US02, redefinição de senha na US04/US06).
+"""Envio de e-mails (convite na US01/US02, redefinição de senha na US04/US06).
 
 Ainda não há provedor de e-mail definido. Por enquanto a única implementação é
 `ConsoleEmailSender`, que escreve a mensagem no log do servidor. Quando houver
