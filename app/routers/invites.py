@@ -1,4 +1,4 @@
-"""US02: primeiro acesso pelo convite.
+"""US02: primeiro acesso pelo convite, em que o professor completa o cadastro.
 
 O token vai no corpo, nunca na URL: caminhos e query strings acabam em logs.
 """
@@ -32,7 +32,9 @@ _INVITE_ERRORS = {
 @router.post(
     "/verify",
     summary="Conferir convite",
-    description="Confere o convite sem consumi-lo e devolve o e-mail, para a tela de criar senha.",
+    description=(
+        "Confere o convite sem consumi-lo e devolve o e-mail, para a tela de completar o cadastro."
+    ),
     response_model=InviteVerifyResponse,
     responses=_INVITE_ERRORS,
 )
@@ -44,10 +46,11 @@ def verify(request: Request, body: InviteTokenRequest, db: DbSession) -> InviteV
 
 @router.post(
     "/accept",
-    summary="Aceitar convite",
+    summary="Completar cadastro pelo convite",
     description=(
-        "Define a senha (mín. 8 caracteres), ativa a conta e já devolve a sessão autenticada. "
-        "Senha fraca responde `422 WEAK_PASSWORD`."
+        "Grava nome (obrigatório), escola (opcional) e senha (mín. 8 caracteres), ativa a conta "
+        "e já devolve a sessão autenticada. Senha fraca responde `422 WEAK_PASSWORD`; nome "
+        "vazio, `422 VALIDATION_ERROR`."
     ),
     response_model=TokenResponse,
     responses={
@@ -57,7 +60,9 @@ def verify(request: Request, body: InviteTokenRequest, db: DbSession) -> InviteV
 )
 @limiter.limit("10/minute")
 def accept(request: Request, body: InviteAcceptRequest, db: DbSession) -> TokenResponse:
-    user = invites_service.accept_invite(db, body.token, body.password)
+    user = invites_service.accept_invite(
+        db, body.token, full_name=body.full_name, school=body.school, password=body.password
+    )
     return token_response(auth_service.start_session(db, user))
 
 

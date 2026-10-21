@@ -41,6 +41,31 @@ def issue_invite(db: Session, user: User) -> IssuedInvite:
     return IssuedInvite(code=raw, link=build_app_link(INVITE_PATH, raw), expires_at=expires_at)
 
 
+def send_invite_email(
+    sender: EmailSender, user: User, invite: IssuedInvite, *, renewed: bool = False
+) -> None:
+    """Manda o link de convite para o e-mail do professor."""
+    if renewed:
+        subject = "Colli Books: seu novo convite"
+        intro = "Seu convite para o Colli Books foi renovado."
+    else:
+        subject = "Colli Books: complete seu cadastro"
+        intro = "A Editora Colli convidou você para acessar o acervo do Colli Books."
+    sender.send(
+        EmailMessage(
+            to=user.email,
+            subject=subject,
+            body=(
+                f"{intro}\n\n"
+                "Para entrar, complete seu cadastro (nome, escola e senha).\n\n"
+                f"Abra no celular: {invite.link}\n"
+                f'Ou cole este código no app, em "Tenho um convite": {invite.code}\n\n'
+                f"O convite vale até {invite.expires_at:%d/%m/%Y %H:%M} (UTC)."
+            ),
+        )
+    )
+
+
 def _find_invite(db: Session, raw: str, *, lock: bool = False) -> Invite | None:
     query = select(Invite).where(Invite.token_hash == hash_token(raw))
     if lock:
@@ -72,13 +97,20 @@ def verify_invite(db: Session, raw: str) -> User:
     return _check_usable(_find_invite(db, raw)).user
 
 
-def accept_invite(db: Session, raw: str, password: str) -> User:
-    """Define a senha, ativa a conta e consome o convite. Faz commit."""
+def accept_invite(
+    db: Session, raw: str, *, full_name: str, school: str | None, password: str
+) -> User:
+    """Completa o cadastro (nome, escola e senha), ativa a conta e consome o convite.
+
+    Faz commit.
+    """
     # FOR UPDATE: o mesmo convite não pode ser aceito duas vezes em paralelo.
     invite = _check_usable(_find_invite(db, raw, lock=True))
     validate_password_strength(password)
 
     user = invite.user
+    user.full_name = full_name
+    user.school = school
     user.password_hash = hash_password(password)
     user.status = UserStatus.ACTIVE
     invite.used_at = datetime.now(UTC)
@@ -104,15 +136,4 @@ def resend_invite(db: Session, sender: EmailSender, raw: str) -> None:
     user = invite.user
     new_invite = issue_invite(db, user)
     db.commit()
-    sender.send(
-        EmailMessage(
-            to=user.email,
-            subject="Colli Books: seu novo convite",
-            body=(
-                "Seu convite para o Colli Books foi renovado.\n\n"
-                f"Abra no celular: {new_invite.link}\n"
-                f'Ou cole este código no app, em "Tenho um convite": {new_invite.code}\n\n'
-                f"O convite vale até {new_invite.expires_at:%d/%m/%Y %H:%M} (UTC)."
-            ),
-        )
-    )
+    send_invite_email(sender, user, new_invite, renewed=True)

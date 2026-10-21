@@ -12,9 +12,10 @@ class TeacherCreateRequest(BaseModel):
 class TeacherInviteResponse(BaseModel):
     """Professor com o convite recém-gerado.
 
-    O link é exibido para a editora copiar e enviar (WhatsApp, e-mail). Como nem
-    todo app deixa clicável um link `collibooks://`, o `invite_code` (o mesmo
-    token) pode ser colado na tela "Tenho um convite".
+    O convite já foi enviado para o e-mail do professor. O link também volta aqui
+    para a editora reenviar por outro canal (WhatsApp) se o e-mail não chegar.
+    Como nem todo app deixa clicável um link `collibooks://`, o `invite_code`
+    (o mesmo token) pode ser colado na tela "Tenho um convite".
     """
 
     id: int = Field(..., examples=[42])

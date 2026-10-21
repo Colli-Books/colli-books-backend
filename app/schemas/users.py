@@ -11,5 +11,6 @@ class UserResponse(BaseModel):
     id: int = Field(..., examples=[1])
     email: str = Field(..., examples=["professor@escola.com"])
     full_name: str | None = Field(None, examples=["Maria Souza"])
+    school: str | None = Field(None, examples=["E.E. Machado de Assis"])
     role: UserRole = Field(..., examples=[UserRole.TEACHER])
     status: UserStatus = Field(..., examples=[UserStatus.ACTIVE])

@@ -1,12 +1,13 @@
 """US01: rotas da editora (administrador)."""
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Depends, status
 
 from app.models import User
 from app.schemas.errors import ErrorResponse
 from app.schemas.teachers import TeacherCreateRequest, TeacherInviteResponse
 from app.security.dependencies import AdminUser, DbSession
 from app.services import teachers as teachers_service
+from app.services.email import EmailSender, get_email_sender
 from app.services.invites import IssuedInvite
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -32,23 +33,30 @@ def _invite_response(user: User, invite: IssuedInvite) -> TeacherInviteResponse:
     "/teachers",
     summary="Cadastrar professor",
     description=(
-        "Cria o professor com status `invite_pending` e devolve o link de convite para a "
-        "editora enviar. Enquanto a senha não for definida, o login fica bloqueado."
+        "Cria o professor com status `invite_pending` e manda o link de convite para o e-mail "
+        "dele, onde ele completa o cadastro (nome, escola e senha). O link também volta na "
+        "resposta, para a editora reenviar por outro canal. Enquanto o cadastro não for "
+        "completado, o login fica bloqueado."
     ),
     status_code=status.HTTP_201_CREATED,
     response_model=TeacherInviteResponse,
     responses={**_AUTH_ERRORS, status.HTTP_409_CONFLICT: {"model": ErrorResponse}},
 )
 def create_teacher(
-    body: TeacherCreateRequest, db: DbSession, _: AdminUser
+    body: TeacherCreateRequest,
+    db: DbSession,
+    _: AdminUser,
+    sender: EmailSender = Depends(get_email_sender),  # noqa: B008
 ) -> TeacherInviteResponse:
-    return _invite_response(*teachers_service.create_teacher(db, body.email))
+    return _invite_response(*teachers_service.create_teacher(db, sender, body.email))
 
 
 @router.post(
     "/teachers/{teacher_id}/invite",
     summary="Gerar novo convite",
-    description="Invalida os convites pendentes do professor e gera um novo link.",
+    description=(
+        "Invalida os convites pendentes do professor, gera um novo link e o manda por e-mail."
+    ),
     response_model=TeacherInviteResponse,
     responses={
         **_AUTH_ERRORS,
@@ -56,5 +64,10 @@ def create_teacher(
         status.HTTP_409_CONFLICT: {"model": ErrorResponse},
     },
 )
-def reissue_invite(teacher_id: int, db: DbSession, _: AdminUser) -> TeacherInviteResponse:
-    return _invite_response(*teachers_service.reissue_teacher_invite(db, teacher_id))
+def reissue_invite(
+    teacher_id: int,
+    db: DbSession,
+    _: AdminUser,
+    sender: EmailSender = Depends(get_email_sender),  # noqa: B008
+) -> TeacherInviteResponse:
+    return _invite_response(*teachers_service.reissue_teacher_invite(db, sender, teacher_id))
