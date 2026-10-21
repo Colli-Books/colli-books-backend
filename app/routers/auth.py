@@ -16,7 +16,7 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 _UNAUTHORIZED = {status.HTTP_401_UNAUTHORIZED: {"model": ErrorResponse}}
 
 
-def _token_response(tokens: SessionTokens) -> TokenResponse:
+def token_response(tokens: SessionTokens) -> TokenResponse:
     return TokenResponse(
         access_token=tokens.access_token,
         refresh_token=tokens.refresh_token,
@@ -38,7 +38,7 @@ def _token_response(tokens: SessionTokens) -> TokenResponse:
 @limiter.limit("10/minute")
 def login(request: Request, body: LoginRequest, db: DbSession) -> TokenResponse:
     user = auth_service.authenticate(db, body.email, body.password)
-    return _token_response(auth_service.start_session(db, user))
+    return token_response(auth_service.start_session(db, user))
 
 
 @router.post(
@@ -54,7 +54,7 @@ def login(request: Request, body: LoginRequest, db: DbSession) -> TokenResponse:
 )
 @limiter.limit("30/minute")
 def refresh(request: Request, body: RefreshTokenRequest, db: DbSession) -> TokenResponse:
-    return _token_response(auth_service.rotate_refresh_token(db, body.refresh_token))
+    return token_response(auth_service.rotate_refresh_token(db, body.refresh_token))
 
 
 @router.post(
