@@ -21,11 +21,20 @@ colli-books-backend/
 ├── app/
 │   ├── __init__.py
 │   ├── main.py           # aplicação FastAPI
+│   ├── config.py         # configuração lida do ambiente
 │   ├── database.py       # engine, sessão e Base do SQLAlchemy
-│   └── models/           # modelo físico (SQLAlchemy)
-│       ├── user.py       # users, invites, password_reset_tokens, refresh_tokens
-│       ├── catalog.py    # books, themes, education_levels, institutional_pages
-│       └── links.py      # tabelas de associação
+│   ├── errors.py         # contrato de erros {code, message, details}
+│   ├── models/           # MODEL: entidades (SQLAlchemy)
+│   │   ├── user.py       # users, invites, password_reset_tokens, refresh_tokens
+│   │   ├── catalog.py    # books, themes, education_levels, institutional_pages
+│   │   └── links.py      # tabelas de associação
+│   ├── services/         # MODEL: regras de negócio (convite, login, reset de senha)
+│   ├── views/            # VIEW: formato JSON de entrada e saída (Pydantic)
+│   ├── controllers/      # CONTROLLER: rotas HTTP (APIRouter), sem regra de negócio
+│   └── security/         # hash de senha, JWT e dependencies de autenticação
+├── tests/
+│   ├── unit/
+│   └── integration/      # contra PostgreSQL real
 ├── alembic/
 │   ├── env.py
 │   └── versions/         # migrations versionadas
@@ -34,6 +43,24 @@ colli-books-backend/
 ├── docker-compose.yml    # orquestra db + backend
 ├── requirements.txt      # dependências Python
 └── .env.example          # variáveis de ambiente de exemplo
+```
+
+### Arquitetura MVC
+
+O backend segue o padrão **MVC** (Model-View-Controller):
+
+| Camada | Pasta | Responsabilidade |
+| --- | --- | --- |
+| **Model** | `app/models/` + `app/services/` | Entidades e persistência (SQLAlchemy) e as regras de negócio |
+| **View** | `app/views/` | Representação dos dados que a API recebe e devolve (Pydantic/JSON) |
+| **Controller** | `app/controllers/` | Recebe a requisição HTTP, chama o Model e devolve a View |
+
+A interface gráfica é o app Flutter (`colli-books-frontend`); para o backend, a
+View é o JSON entregue a ele.
+
+```
+App Flutter ──HTTP──▶ Controller ──▶ Service (regras) ──▶ Model (banco)
+            ◀──JSON── View      ◀──────────────────────────┘
 ```
 
 ## Como executar
@@ -135,7 +162,7 @@ Os metadados da página ficam em `app/main.py`:
   cabeçalho da página e a descrição de cada tag.
 - Em cada rota, `tags`, `summary`, `description` e `response_model` definem como o
   endpoint aparece na documentação.
-- Os modelos Pydantic (`HelloResponse`, `HealthResponse`) viram os *schemas* exibidos
+- Os modelos Pydantic de `app/views/` viram os *schemas* exibidos
   no rodapé da página, com os exemplos definidos em `Field(..., examples=[...])`.
 
 ### E-mail

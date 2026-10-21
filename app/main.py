@@ -1,11 +1,8 @@
-from fastapi import FastAPI, Response, status
-from pydantic import BaseModel, Field
-from sqlalchemy import text
+from fastapi import FastAPI
 
-from app.database import engine
+from app.controllers import api_router, health
 from app.errors import register_error_handlers
 from app.rate_limit import register_rate_limit
-from app.routers import api_router
 
 DESCRIPTION = """
 API do projeto **Colli Books**.
@@ -55,54 +52,5 @@ app = FastAPI(
 
 register_error_handlers(app)
 register_rate_limit(app)
+app.include_router(health.router)
 app.include_router(api_router)
-
-
-class HelloResponse(BaseModel):
-    message: str = Field(..., examples=["Hello World"])
-
-
-class HealthResponse(BaseModel):
-    status: str = Field(..., description="`ok` ou `error`.", examples=["ok"])
-    database: str = Field(
-        ...,
-        description="`connected` quando o banco responde; caso contrário, o erro.",
-        examples=["connected"],
-    )
-
-
-@app.get(
-    "/",
-    tags=["Root"],
-    summary="Hello World",
-    description="Retorna uma mensagem estática para confirmar que a API está no ar.",
-    response_model=HelloResponse,
-)
-def hello_world() -> HelloResponse:
-    return HelloResponse(message="Hello World")
-
-
-@app.get(
-    "/health",
-    tags=["Health"],
-    summary="Health check",
-    description=(
-        "Executa um `SELECT 1` no PostgreSQL. "
-        "Responde **200** quando o banco está acessível e **503** quando não está."
-    ),
-    response_model=HealthResponse,
-    responses={
-        status.HTTP_503_SERVICE_UNAVAILABLE: {
-            "model": HealthResponse,
-            "description": "O banco de dados não está acessível.",
-        }
-    },
-)
-def health(response: Response) -> HealthResponse:
-    try:
-        with engine.connect() as connection:
-            connection.execute(text("SELECT 1"))
-    except Exception as exc:
-        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-        return HealthResponse(status="error", database=str(exc))
-    return HealthResponse(status="ok", database="connected")

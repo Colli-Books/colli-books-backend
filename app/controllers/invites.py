@@ -5,20 +5,20 @@ O token vai no corpo, nunca na URL: caminhos e query strings acabam em logs.
 
 from fastapi import APIRouter, Depends, Request, status
 
+from app.controllers.auth import token_response
 from app.rate_limit import limiter
-from app.routers.auth import token_response
-from app.schemas.auth import TokenResponse
-from app.schemas.errors import ErrorResponse
-from app.schemas.invites import (
+from app.security.dependencies import DbSession
+from app.services import auth as auth_service
+from app.services import invites as invites_service
+from app.services.email import EmailSender, get_email_sender
+from app.views.auth import TokenResponse
+from app.views.errors import ErrorResponse
+from app.views.invites import (
     InviteAcceptRequest,
     InviteTokenRequest,
     InviteVerifyResponse,
     MessageResponse,
 )
-from app.security.dependencies import DbSession
-from app.services import auth as auth_service
-from app.services import invites as invites_service
-from app.services.email import EmailSender, get_email_sender
 
 router = APIRouter(prefix="/invites", tags=["Convites"])
 

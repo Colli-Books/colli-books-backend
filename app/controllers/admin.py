@@ -3,12 +3,12 @@
 from fastapi import APIRouter, Depends, status
 
 from app.models import User
-from app.schemas.errors import ErrorResponse
-from app.schemas.teachers import TeacherCreateRequest, TeacherInviteResponse
 from app.security.dependencies import AdminUser, DbSession
 from app.services import teachers as teachers_service
 from app.services.email import EmailSender, get_email_sender
 from app.services.invites import IssuedInvite
+from app.views.errors import ErrorResponse
+from app.views.teachers import TeacherCreateRequest, TeacherInviteResponse
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 

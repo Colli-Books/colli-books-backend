@@ -17,7 +17,7 @@ def test_health_banco_ok(client: TestClient) -> None:
     mock_ctx.__enter__ = MagicMock(return_value=mock_conn)
     mock_ctx.__exit__ = MagicMock(return_value=False)
 
-    with patch("app.main.engine.connect", return_value=mock_ctx):
+    with patch("app.controllers.health.engine.connect", return_value=mock_ctx):
         response = client.get("/health")
 
     assert response.status_code == 200
@@ -28,7 +28,9 @@ def test_health_banco_ok(client: TestClient) -> None:
 
 def test_health_banco_indisponivel(client: TestClient) -> None:
     """GET /health deve retornar 503 quando o banco não está acessível."""
-    with patch("app.main.engine.connect", side_effect=Exception("connection refused")):
+    with patch(
+        "app.controllers.health.engine.connect", side_effect=Exception("connection refused")
+    ):
         response = client.get("/health")
 
     assert response.status_code == 503

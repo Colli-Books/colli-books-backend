@@ -4,21 +4,21 @@ from fastapi import APIRouter, Depends, Request, Response, status
 
 from app.errors import ErrorCode
 from app.rate_limit import limiter
-from app.schemas.auth import (
+from app.security.dependencies import CurrentUser, DbSession
+from app.services import auth as auth_service
+from app.services import password_reset as password_reset_service
+from app.services.auth import SessionTokens
+from app.services.email import EmailSender, get_email_sender
+from app.views.auth import (
     ForgotPasswordRequest,
     LoginRequest,
     RefreshTokenRequest,
     ResetPasswordRequest,
     TokenResponse,
 )
-from app.schemas.errors import ErrorResponse
-from app.schemas.invites import MessageResponse
-from app.schemas.users import UserResponse
-from app.security.dependencies import CurrentUser, DbSession
-from app.services import auth as auth_service
-from app.services import password_reset as password_reset_service
-from app.services.auth import SessionTokens
-from app.services.email import EmailSender, get_email_sender
+from app.views.errors import ErrorResponse
+from app.views.invites import MessageResponse
+from app.views.users import UserResponse
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
