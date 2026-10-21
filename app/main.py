@@ -1,7 +1,5 @@
 from fastapi import FastAPI
-from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
-from app.config import get_settings
 from app.controllers import api_router, health
 from app.errors import register_error_handlers
 from app.rate_limit import register_rate_limit
@@ -51,9 +49,6 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url=None,
 )
-
-if get_settings().behind_proxy:
-    app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
 register_error_handlers(app)
 register_rate_limit(app)

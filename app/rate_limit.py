@@ -7,8 +7,8 @@ Uso numa rota (o parâmetro `request: Request` é obrigatório para o slowapi):
     def login(request: Request, ...): ...
 
 Limitações conhecidas: o contador fica em memória, por processo. Atrás de um
-proxy reverso, o IP visto é o do proxy; nesse caso é preciso configurar o
-uvicorn com `--proxy-headers`.
+proxy reverso, o IP visto é o do proxy; nesse caso, `CLIENT_IP_HEADER` indica
+o header com o IP real do cliente.
 """
 
 from fastapi import FastAPI, Request, status
@@ -20,7 +20,18 @@ from slowapi.util import get_remote_address
 from app.config import get_settings
 from app.errors import ErrorCode, error_body
 
-limiter = Limiter(key_func=get_remote_address, enabled=get_settings().rate_limit_enabled)
+
+def client_ip(request: Request) -> str:
+    """IP usado como chave do rate limit."""
+    header = get_settings().client_ip_header
+    if header:
+        value = request.headers.get(header, "").split(",")[0].strip()
+        if value:
+            return value
+    return get_remote_address(request)
+
+
+limiter = Limiter(key_func=client_ip, enabled=get_settings().rate_limit_enabled)
 
 
 async def rate_limit_exceeded_handler(_: Request, exc: RateLimitExceeded) -> JSONResponse:

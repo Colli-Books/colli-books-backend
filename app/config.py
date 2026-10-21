@@ -26,9 +26,11 @@ class Settings(BaseSettings):
     # e não suporta prepared statements.
     database_transaction_pooler: bool = False
 
-    # Ligar atrás de um proxy reverso (Vercel): o IP do cliente passa a vir do
-    # `X-Forwarded-For`, senão o rate limit trataria todos como um só IP.
-    behind_proxy: bool = False
+    # Atrás de um proxy reverso, o IP da conexão é o do proxy e o rate limit
+    # trataria todos os clientes como um só. Aqui vai o header com o IP real,
+    # que só pode ser um header que o proxy SOBRESCREVE (na Vercel,
+    # `x-forwarded-for`); um header que o proxy só acrescenta pode ser forjado.
+    client_ip_header: str | None = None
 
     # --- Tokens de sessão (US03) ------------------------------------------
     jwt_secret: str = DEV_JWT_SECRET

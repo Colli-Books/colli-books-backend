@@ -282,7 +282,7 @@ Tabela nova criada por migration precisa de `ENABLE ROW LEVEL SECURITY` também.
 | --- | --- |
 | `DATABASE_URL` | String do **Transaction pooler** (porta `6543`) em *Connect* no painel do Supabase |
 | `DATABASE_TRANSACTION_POOLER` | `true` (sem prepared statements e sem pool local) |
-| `BEHIND_PROXY` | `true` (IP do cliente vem do `X-Forwarded-For`, usado no rate limit) |
+| `CLIENT_IP_HEADER` | `x-forwarded-for` (IP do cliente no rate limit; a Vercel sobrescreve esse header, então não dá para forjar. Em proxy que só acrescenta ao header, não use) |
 | `APP_ENV` | `production` |
 | `JWT_SECRET` | Valor aleatório com 32+ caracteres (`python -c "import secrets; print(secrets.token_urlsafe(48))"`) |
 
