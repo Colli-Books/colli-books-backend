@@ -28,6 +28,10 @@ TAGS_METADATA = [
         "name": "Health",
         "description": "Verificação de saúde da API e da conexão com o banco de dados.",
     },
+    {
+        "name": "Auth",
+        "description": "Login, renovação de sessão, logout e dados do usuário logado.",
+    },
 ]
 
 app = FastAPI(

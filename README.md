@@ -62,7 +62,13 @@ docker compose up --build -d
 docker compose exec backend alembic upgrade head
 ```
 
-4. Acompanhe os logs (se estiver em segundo plano):
+4. Crie o administrador inicial (idempotente; a senha é pedida no terminal):
+
+```bash
+docker compose exec backend python -m app.cli seed-admin --email admin@colli.com --name "Editora Colli"
+```
+
+5. Acompanhe os logs (se estiver em segundo plano):
 
 ```bash
 docker compose logs -f backend
@@ -92,6 +98,10 @@ do navegador, pelo botão *Try it out*.
 |--------|-----------|--------|--------------------------------------------|------------|
 | `GET`  | `/`       | Root   | Hello world; confirma que a API está no ar | `200`      |
 | `GET`  | `/health` | Health | Executa `SELECT 1` no PostgreSQL           | `200`, `503` |
+| `POST` | `/api/v1/auth/login` | Auth | Login com e-mail e senha (US03) | `200`, `401`, `429` |
+| `POST` | `/api/v1/auth/refresh` | Auth | Troca o refresh token por um par novo (rotação) | `200`, `401` |
+| `POST` | `/api/v1/auth/logout` | Auth | Revoga o refresh token | `204` |
+| `GET`  | `/api/v1/auth/me` | Auth | Dados e papel do usuário logado (US05) | `200`, `401` |
 
 ### Testando o backend
 
