@@ -102,6 +102,8 @@ do navegador, pelo botão *Try it out*.
 | `POST` | `/api/v1/auth/refresh` | Auth | Troca o refresh token por um par novo (rotação) | `200`, `401` |
 | `POST` | `/api/v1/auth/logout` | Auth | Revoga o refresh token | `204` |
 | `GET`  | `/api/v1/auth/me` | Auth | Dados e papel do usuário logado (US05) | `200`, `401` |
+| `POST` | `/api/v1/auth/forgot-password` | Auth | Envia link de redefinição de senha (US04, US06) | `202`, `429` |
+| `POST` | `/api/v1/auth/reset-password` | Auth | Troca a senha e encerra as sessões (US04, US06) | `204`, `400`, `422` |
 | `POST` | `/api/v1/invites/verify` | Convites | Confere o convite e devolve o e-mail (US02) | `200`, `404`, `409`, `410` |
 | `POST` | `/api/v1/invites/accept` | Convites | Define a senha, ativa a conta e autentica (US02) | `200`, `404`, `409`, `410`, `422` |
 | `POST` | `/api/v1/invites/resend` | Convites | Reenvia convite expirado por e-mail (US02) | `202` |
@@ -135,6 +137,13 @@ Os metadados da página ficam em `app/main.py`:
   endpoint aparece na documentação.
 - Os modelos Pydantic (`HelloResponse`, `HealthResponse`) viram os *schemas* exibidos
   no rodapé da página, com os exemplos definidos em `Field(..., examples=[...])`.
+
+### E-mail
+
+Ainda não há provedor de e-mail. Os e-mails (reenvio de convite e redefinição de
+senha) são escritos no log do backend (`docker compose logs -f backend`), com o link
+e o código. Para integrar um provedor, implemente o método `send` de
+`app/services/email.py` e devolva a nova classe em `get_email_sender`.
 
 ## Testes automatizados
 

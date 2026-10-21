@@ -1,15 +1,24 @@
 """US03 (login, logout, sessão) e US05 (identificação do usuário logado)."""
 
-from fastapi import APIRouter, Request, Response, status
+from fastapi import APIRouter, Depends, Request, Response, status
 
 from app.errors import ErrorCode
 from app.rate_limit import limiter
-from app.schemas.auth import LoginRequest, RefreshTokenRequest, TokenResponse
+from app.schemas.auth import (
+    ForgotPasswordRequest,
+    LoginRequest,
+    RefreshTokenRequest,
+    ResetPasswordRequest,
+    TokenResponse,
+)
 from app.schemas.errors import ErrorResponse
+from app.schemas.invites import MessageResponse
 from app.schemas.users import UserResponse
 from app.security.dependencies import CurrentUser, DbSession
 from app.services import auth as auth_service
+from app.services import password_reset as password_reset_service
 from app.services.auth import SessionTokens
+from app.services.email import EmailSender, get_email_sender
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -77,3 +86,46 @@ def logout(body: RefreshTokenRequest, db: DbSession) -> Response:
 )
 def me(user: CurrentUser) -> UserResponse:
     return UserResponse.model_validate(user)
+
+
+@router.post(
+    "/forgot-password",
+    summary="Esqueci minha senha",
+    description=(
+        "Envia o link de redefinição para o e-mail, se houver conta ativa. Sempre responde "
+        "`202` com a mesma mensagem, para não revelar se o e-mail está cadastrado."
+    ),
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=MessageResponse,
+)
+@limiter.limit("5/minute")
+def forgot_password(
+    request: Request,
+    body: ForgotPasswordRequest,
+    db: DbSession,
+    sender: EmailSender = Depends(get_email_sender),  # noqa: B008
+) -> MessageResponse:
+    password_reset_service.request_password_reset(db, sender, body.email)
+    return MessageResponse(
+        message="Se houver uma conta com este e-mail, enviaremos um link de redefinição."
+    )
+
+
+@router.post(
+    "/reset-password",
+    summary="Redefinir senha",
+    description=(
+        "Troca a senha usando o token do link. O token vale uma vez só e todas as sessões "
+        f"abertas são encerradas. Token inválido, usado ou expirado: `400 "
+        f"{ErrorCode.RESET_TOKEN_INVALID}`; senha fraca: `422 {ErrorCode.WEAK_PASSWORD}`."
+    ),
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse},
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": ErrorResponse},
+    },
+)
+@limiter.limit("10/minute")
+def reset_password(request: Request, body: ResetPasswordRequest, db: DbSession) -> Response:
+    password_reset_service.reset_password(db, body.token, body.new_password)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
