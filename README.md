@@ -121,6 +121,23 @@ Os metadados da página ficam em `app/main.py`:
 - Os modelos Pydantic (`HelloResponse`, `HealthResponse`) viram os *schemas* exibidos
   no rodapé da página, com os exemplos definidos em `Field(..., examples=[...])`.
 
+## Testes automatizados
+
+Os testes de integração rodam contra um **PostgreSQL real** (o schema usa `unaccent`,
+`pg_trgm` e índices GIN, que não existem no SQLite). O `conftest.py` recria o banco
+`colli_books_test` do zero, aplica as migrations e desfaz cada teste com rollback.
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt
+docker compose up -d db
+pytest
+```
+
+Para usar outro servidor, defina `TEST_DATABASE_URL` (o nome do banco precisa
+terminar em `_test`). As dependências de desenvolvimento ficam em
+`requirements-dev.txt`, para não irem para a imagem Docker.
+
 ## Banco de dados
 
 O modelo físico é definido em `app/models/` (SQLAlchemy 2.0) e materializado no

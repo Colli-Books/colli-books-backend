@@ -1,14 +1,12 @@
-import os
 from collections.abc import Generator
 from datetime import datetime
 
 from sqlalchemy import DateTime, create_engine, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+psycopg://postgres:postgres@db:5432/colli_books",
-)
+from app.config import get_settings
+
+DATABASE_URL = get_settings().database_url
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 

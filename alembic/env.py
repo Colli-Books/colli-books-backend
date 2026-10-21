@@ -1,10 +1,10 @@
 from logging.config import fileConfig
 
+from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 # Import com efeito colateral: registra todos os models em Base.metadata.
 import app.models  # noqa: F401
-from alembic import context
 from app.database import DATABASE_URL, Base
 
 config = context.config
