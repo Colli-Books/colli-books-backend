@@ -7,7 +7,7 @@ leia `os.environ` diretamente.
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Segredo usado só em desenvolvimento. Em produção a aplicação se recusa a subir
@@ -21,6 +21,16 @@ class Settings(BaseSettings):
     app_env: Literal["development", "test", "production"] = "development"
 
     database_url: str = "postgresql+psycopg://postgres:postgres@db:5432/colli_books"
+    # Ligar quando a conexão passa por um pooler em modo transação (Supabase na
+    # porta 6543), como no deploy serverless: o pooler já reaproveita conexões
+    # e não suporta prepared statements.
+    database_transaction_pooler: bool = False
+
+    # Atrás de um proxy reverso, o IP da conexão é o do proxy e o rate limit
+    # trataria todos os clientes como um só. Aqui vai o header com o IP real,
+    # que só pode ser um header que o proxy SOBRESCREVE (na Vercel,
+    # `x-forwarded-for`); um header que o proxy só acrescenta pode ser forjado.
+    client_ip_header: str | None = None
 
     # --- Tokens de sessão (US03) ------------------------------------------
     jwt_secret: str = DEV_JWT_SECRET
@@ -44,6 +54,16 @@ class Settings(BaseSettings):
 
     # --- Proteção contra força bruta --------------------------------------
     rate_limit_enabled: bool = True
+
+    @field_validator("database_url")
+    @classmethod
+    def _use_psycopg_driver(cls, url: str) -> str:
+        # O Supabase entrega `postgresql://...`, que o SQLAlchemy abriria com o
+        # psycopg2 (não instalado). Fixa o driver psycopg 3.
+        for prefix in ("postgresql://", "postgres://"):
+            if url.startswith(prefix):
+                return "postgresql+psycopg://" + url.removeprefix(prefix)
+        return url
 
     @model_validator(mode="after")
     def _reject_insecure_secret_in_production(self) -> "Settings":

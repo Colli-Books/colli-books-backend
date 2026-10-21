@@ -1,0 +1,16 @@
+# Só o código da API (app/) e o requirements.txt vão para a função da Vercel.
+.venv/
+.env
+.pytest_cache/
+.ruff_cache/
+.coverage
+__pycache__/
+*.py[cod]
+tests/
+alembic/
+alembic.ini
+docker-compose.yml
+Dockerfile
+requirements-dev.txt
+HANDOFF.md
+plano_de_acao.md

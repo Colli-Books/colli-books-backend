@@ -261,6 +261,48 @@ docker compose exec backend alembic downgrade -1
 > compara índices funcionais que usam classe de operador.
 
 
+## Deploy (Supabase + Vercel)
+
+| Peça | Onde |
+| --- | --- |
+| PostgreSQL | Supabase (projeto `hxtrqqiksxbfmomktgfq`) |
+| API FastAPI | Vercel (função Python; entrypoint `app/main.py`, detectado sozinho) |
+
+O Supabase não roda Python (as Edge Functions são Deno/TypeScript), por isso só o banco
+fica lá. A autenticação continua sendo a da própria API; o Supabase Auth não é usado.
+
+**Data API do Supabase bloqueada.** O Supabase expõe o schema `public` pela chave pública
+do projeto. A migration `0002` liga RLS sem policies em todas as tabelas e revoga os
+privilégios de `anon` e `authenticated`; a API conecta como `postgres`, que ignora o RLS.
+Tabela nova criada por migration precisa de `ENABLE ROW LEVEL SECURITY` também.
+
+### Variáveis de ambiente na Vercel
+
+| Variável | Valor |
+| --- | --- |
+| `DATABASE_URL` | String do **Transaction pooler** (porta `6543`) em *Connect* no painel do Supabase |
+| `DATABASE_TRANSACTION_POOLER` | `true` (sem prepared statements e sem pool local) |
+| `CLIENT_IP_HEADER` | `x-forwarded-for` (IP do cliente no rate limit; a Vercel sobrescreve esse header, então não dá para forjar. Em proxy que só acrescenta ao header, não use) |
+| `APP_ENV` | `production` |
+| `JWT_SECRET` | Valor aleatório com 32+ caracteres (`python -c "import secrets; print(secrets.token_urlsafe(48))"`) |
+
+A conexão direta do Supabase (`db.<ref>.supabase.co`) só tem IPv6; a Vercel precisa do pooler.
+Configure a região das funções na Vercel igual à do Supabase para reduzir a latência.
+
+### Migrations e admin em produção
+
+Rodados da máquina de quem tem a senha do banco, com a string do **Session pooler**
+(porta `5432`), que aceita os comandos do Alembic:
+
+```bash
+export DATABASE_URL='postgresql://postgres.<ref>:<senha>@aws-0-<regiao>.pooler.supabase.com:5432/postgres'
+alembic upgrade head
+ADMIN_PASSWORD=... python -m app.cli seed-admin --email admin@colli.com --name "Editora Colli"
+```
+
+Limitação: o rate limit fica em memória por instância da função, então vale por instância,
+não globalmente.
+
 ## Comandos úteis
 
 ```bash
