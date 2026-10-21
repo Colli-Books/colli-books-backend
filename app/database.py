@@ -3,12 +3,18 @@ from datetime import datetime
 
 from sqlalchemy import DateTime, create_engine, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
+from sqlalchemy.pool import NullPool
 
 from app.config import get_settings
 
 DATABASE_URL = get_settings().database_url
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+if get_settings().database_transaction_pooler:
+    engine = create_engine(
+        DATABASE_URL, poolclass=NullPool, connect_args={"prepare_threshold": None}
+    )
+else:
+    engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 

@@ -36,4 +36,13 @@ def test_health_banco_indisponivel(client: TestClient) -> None:
     assert response.status_code == 503
     data = response.json()
     assert data["status"] == "error"
-    assert "connection refused" in data["database"]
+    assert data["database"] == "unavailable"
+
+
+def test_health_nao_expoe_o_erro_do_banco(client: TestClient) -> None:
+    """A mensagem do driver pode conter host e usuário: fica só no log."""
+    erro = "connection to server at db.exemplo.supabase.co, user postgres failed"
+    with patch("app.controllers.health.engine.connect", side_effect=Exception(erro)):
+        response = client.get("/health")
+
+    assert "supabase" not in response.text

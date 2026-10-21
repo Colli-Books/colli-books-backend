@@ -9,6 +9,6 @@ class HealthResponse(BaseModel):
     status: str = Field(..., description="`ok` ou `error`.", examples=["ok"])
     database: str = Field(
         ...,
-        description="`connected` quando o banco responde; caso contrário, o erro.",
+        description="`connected` quando o banco responde; `unavailable` quando não.",
         examples=["connected"],
     )
