@@ -32,6 +32,10 @@ TAGS_METADATA = [
         "name": "Auth",
         "description": "Login, renovação de sessão, logout e dados do usuário logado.",
     },
+    {
+        "name": "Admin",
+        "description": "Rotas exclusivas da editora (papel `admin`).",
+    },
 ]
 
 app = FastAPI(
