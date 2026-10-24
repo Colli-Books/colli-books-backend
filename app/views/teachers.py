@@ -9,6 +9,16 @@ class TeacherCreateRequest(BaseModel):
     email: EmailStr = Field(..., examples=["professor@escola.com"])
 
 
+class AdminOverviewResponse(BaseModel):
+    """Contadores do painel do admin (US13) em uma única chamada."""
+
+    books_count: int = Field(..., examples=[58])
+    teachers_count: int = Field(..., examples=[23])
+    pending_invites_count: int = Field(
+        ..., description="Professores com convite ainda não aceito.", examples=[4]
+    )
+
+
 class TeacherInviteResponse(BaseModel):
     """Professor com o convite recém-gerado.
 

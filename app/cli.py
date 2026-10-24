@@ -1,10 +1,15 @@
 """Comandos administrativos.
 
     python -m app.cli seed-admin --email admin@colli.com [--name "Editora Colli"]
+    python -m app.cli seed-demo
 
 A senha é lida da variável `ADMIN_PASSWORD` ou pedida no terminal, para não
 ficar no histórico do shell. O comando é idempotente: se o admin já existe,
 nada muda (nem a senha).
+
+`seed-demo` popula temas, escolaridades, obras e páginas institucionais com os
+mesmos dados do protótipo do app — também idempotente (rodar de novo não
+duplica nada).
 """
 
 import argparse
@@ -20,6 +25,7 @@ from app.errors import AppError
 from app.models import User, UserRole, UserStatus
 from app.security.passwords import hash_password, validate_password_strength
 from app.services.auth import normalize_email
+from app.services.demo_seed import seed_demo
 
 
 class SeedAdminError(Exception):
@@ -61,6 +67,11 @@ def main(argv: list[str] | None = None) -> int:
     seed.add_argument("--email", required=True)
     seed.add_argument("--name", default=None, help="Nome exibido no cabeçalho do app.")
 
+    commands.add_parser(
+        "seed-demo",
+        help="Popula temas, escolaridades, obras e páginas institucionais de demonstração.",
+    )
+
     args = parser.parse_args(argv)
 
     if args.command == "seed-admin":
@@ -72,6 +83,15 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"Erro: {exc}", file=sys.stderr)
                 return 1
         print("Admin criado." if created else "Admin já existe; nada foi alterado.")
+    elif args.command == "seed-demo":
+        with SessionLocal() as db:
+            report = seed_demo(db)
+        print(
+            "Seed concluído. Criados agora: "
+            f"{report.themes_created} temas, {report.education_levels_created} escolaridades, "
+            f"{report.books_created} obras, {report.institutional_pages_created} páginas "
+            "institucionais (o resto já existia)."
+        )
     return 0
 
 

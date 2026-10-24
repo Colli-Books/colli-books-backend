@@ -42,6 +42,12 @@ class Settings(BaseSettings):
     # Teto para evitar que uma senha gigante vire custo de CPU no hash.
     password_max_length: int = 128
 
+    # --- Upload de capas (US15) --------------------------------------------
+    # Pasta servida em /media. Relativa ao workdir do processo (`/code` no
+    # container, raiz do projeto no venv); em testes, aponta para um tmp.
+    media_dir: str = "media"
+    cover_max_bytes: int = 5 * 1024 * 1024
+
     # --- Proteção contra força bruta --------------------------------------
     rate_limit_enabled: bool = True
 

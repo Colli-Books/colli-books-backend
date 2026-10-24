@@ -1,6 +1,12 @@
 # Colli Books Backend
 
-Ambiente Docker com **PostgreSQL** e um **backend FastAPI** (hello world).
+Backend **FastAPI** + **PostgreSQL** da plataforma Colli Books, consumido pelo
+app Flutter (`colli-books-frontend`). Cobre autenticação e contas (convites,
+senha, sessões com refresh token), o catálogo de obras com busca e filtros,
+temas/escolaridades, perfil do professor, Minha Seleção e o painel do admin.
+
+Os contratos detalhados (formato de requisição/resposta, códigos de erro e as
+boas práticas para o app mobile) estão em `../Contratos API.md`, na raiz do TPPE.
 
 ## Pré-requisitos
 
@@ -28,10 +34,11 @@ colli-books-backend/
 │   │   ├── user.py       # users, invites, password_reset_tokens, refresh_tokens
 │   │   ├── catalog.py    # books, themes, education_levels, institutional_pages
 │   │   └── links.py      # tabelas de associação
-│   ├── services/         # MODEL: regras de negócio (convite, login, reset de senha)
+│   ├── services/         # MODEL: regras de negócio (convite, login, acervo, perfil, seeds)
 │   ├── views/            # VIEW: formato JSON de entrada e saída (Pydantic)
 │   ├── controllers/      # CONTROLLER: rotas HTTP (APIRouter), sem regra de negócio
 │   └── security/         # hash de senha, JWT e dependencies de autenticação
+├── media/                # capas enviadas pelo admin, servidas em /media (gitignored)
 ├── tests/
 │   ├── unit/
 │   └── integration/      # contra PostgreSQL real
@@ -95,7 +102,14 @@ docker compose exec backend alembic upgrade head
 docker compose exec backend python -m app.cli seed-admin --email admin@colli.com --name "Editora Colli"
 ```
 
-5. Acompanhe os logs (se estiver em segundo plano):
+5. Popule o acervo de demonstração (idempotente; temas, escolaridades, as obras
+   do protótipo e as páginas institucionais com URLs de base):
+
+```bash
+docker compose exec backend python -m app.cli seed-demo
+```
+
+6. Acompanhe os logs (se estiver em segundo plano):
 
 ```bash
 docker compose logs -f backend
@@ -136,6 +150,38 @@ do navegador, pelo botão *Try it out*.
 | `POST` | `/api/v1/invites/resend` | Convites | Reenvia convite expirado por e-mail (US02) | `202` |
 | `POST` | `/api/v1/admin/teachers` | Admin | Cadastra professor, manda o convite por e-mail e devolve o link (US01) | `201`, `401`, `403`, `409` |
 | `POST` | `/api/v1/admin/teachers/{id}/invite` | Admin | Gera novo convite, invalida o anterior e manda por e-mail | `200`, `401`, `403`, `404`, `409` |
+| `GET`  | `/api/v1/admin/teachers` | Admin | Lista professores, com filtro `status` e busca `q` | `200`, `401`, `403` |
+| `GET`  | `/api/v1/admin/overview` | Admin | Contadores do painel: obras, professores, convites pendentes (US13) | `200`, `401`, `403` |
+| `GET`  | `/api/v1/books` | Obras | Catálogo com busca `q` (sem acento), filtros `theme_id`/`education_level_id` e `sort` (US07, US08, US11) | `200`, `401` |
+| `GET`  | `/api/v1/books/{id}` | Obras | Detalhe completo da obra (US09) | `200`, `401`, `404` |
+| `POST` | `/api/v1/books` | Obras | Cadastra obra — `multipart/form-data`, capa PNG/JPEG opcional (US15, US17) | `201`, `401`, `403`, `409`, `422` |
+| `PATCH` | `/api/v1/books/{id}` | Obras | Edição parcial — `multipart/form-data`; campo vazio limpa, `theme_ids=` remove os vínculos (US15, US17) | `200`, `401`, `403`, `404`, `409`, `422` |
+| `GET`  | `/api/v1/themes` | Temas | Lista temas (US08, US16) | `200`, `401` |
+| `POST` | `/api/v1/themes` | Temas | Cria tema (US16) | `201`, `401`, `403`, `409`, `422` |
+| `PATCH` | `/api/v1/themes/{id}` | Temas | Renomeia tema preservando vínculos (US16) | `200`, `401`, `403`, `404`, `409` |
+| `GET`  | `/api/v1/education-levels` | Escolaridades | Lista escolaridades na ordem pedagógica (US08, US16) | `200`, `401` |
+| `POST` | `/api/v1/education-levels` | Escolaridades | Cria escolaridade (US16) | `201`, `401`, `403`, `409`, `422` |
+| `PATCH` | `/api/v1/education-levels/{id}` | Escolaridades | Renomeia/reordena escolaridade (US16) | `200`, `401`, `403`, `404`, `409` |
+| `PATCH` | `/api/v1/me` | Perfil | Atualiza nome e escola do usuário logado (US10) | `200`, `401`, `422` |
+| `PUT`  | `/api/v1/me/password` | Perfil | Troca a senha (exige a atual) e encerra as sessões | `204`, `400`, `401`, `422` |
+| `PUT`  | `/api/v1/me/interests` | Perfil | Substitui os temas/escolaridades que o professor leciona (US11) | `200`, `401`, `422` |
+| `GET`  | `/api/v1/me/saved-books` | Perfil | Minha Seleção, da obra salva mais recente à mais antiga (US12) | `200`, `401` |
+| `PUT`  | `/api/v1/me/saved-books/{book_id}` | Perfil | Salva obra na seleção — idempotente (US12) | `204`, `401`, `404` |
+| `DELETE` | `/api/v1/me/saved-books/{book_id}` | Perfil | Remove obra da seleção — idempotente (US12) | `204`, `401`, `404` |
+| `GET`  | `/media/covers/{arquivo}` | — | Capas enviadas pelo admin (estático, fora de `/api/v1`) | `200`, `404` |
+
+**Listas não são paginadas** (acervo e professores são poucos registros; o app
+monta os filtros com os dados retornados). As convenções completas — erros,
+idempotência, PATCH multipart — estão em `../Contratos API.md`.
+
+### Upload de capas
+
+`POST/PATCH /api/v1/books` aceitam a capa no campo `cover` do form multipart
+(PNG ou JPEG, até 5 MB — o tipo é conferido pelos bytes do arquivo, não só pelo
+`Content-Type`). Os arquivos ficam em `media/covers/`, servidos em `GET
+/media/covers/{arquivo}`, e a obra guarda o caminho relativo em `cover_url` —
+o app resolve contra a base URL. Configuração por ambiente: `MEDIA_DIR`
+(pasta) e `COVER_MAX_BYTES` (tamanho máximo).
 
 ### Testando o backend
 

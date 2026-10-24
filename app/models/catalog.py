@@ -102,9 +102,14 @@ class Book(TimestampMixin, Base):
     isbn: Mapped[str | None] = mapped_column(String(20), nullable=True, unique=True)
     page_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     edition: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    year: Mapped[int | None] = mapped_column(Integer, nullable=True)
     cover_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     # US09: botão "Comprar livro" leva à loja oficial — a venda fica fora daqui.
     store_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Página da obra no site da editora e link para material pedagógico:
+    # ambos são só apontadores — o conteúdo continua fora do sistema.
+    book_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    pedagogical_material_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     # US17: "Uma obra pode existir no acervo sem escolaridade vinculada."
     # Por isso nulo, e SET NULL ao apagar a escolaridade — apagar uma
     # escolaridade não pode apagar obras do acervo.

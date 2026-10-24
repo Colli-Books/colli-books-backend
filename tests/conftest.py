@@ -13,6 +13,7 @@ Para rodar localmente: `docker compose up -d db` e depois `pytest`.
 """
 
 import os
+import tempfile
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -28,6 +29,8 @@ TEST_DATABASE_URL = os.environ.get(
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 os.environ["APP_ENV"] = "test"
 os.environ["RATE_LIMIT_ENABLED"] = "false"
+# Uploads de capa de teste não podem sujar a pasta media/ do projeto.
+os.environ["MEDIA_DIR"] = tempfile.mkdtemp(prefix="colli-test-media-")
 
 from alembic import command  # noqa: E402
 from alembic.config import Config  # noqa: E402

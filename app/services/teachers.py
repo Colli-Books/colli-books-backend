@@ -5,12 +5,12 @@ completa o cadastro (nome, escola e senha) na US02.
 """
 
 from fastapi import status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.errors import AppError, ErrorCode
-from app.models import User, UserRole, UserStatus
+from app.models import Book, User, UserRole, UserStatus
 from app.services.auth import normalize_email
 from app.services.email import EmailSender
 from app.services.invites import IssuedInvite, issue_invite, send_invite_email
@@ -66,3 +66,35 @@ def reissue_teacher_invite(
     db.commit()
     send_invite_email(sender, user, invite, renewed=True)
     return user, invite
+
+
+def list_teachers(db: Session, *, status_filter: UserStatus | None, q: str | None) -> list[User]:
+    """Gestão de professores (tela do admin): filtro por status e busca por
+    nome/e-mail. Lista integral — a base é pequena e o app monta os filtros."""
+    stmt = select(User).where(User.role == UserRole.TEACHER)
+    if status_filter is not None:
+        stmt = stmt.where(User.status == status_filter)
+    if q and q.strip():
+        pattern = f"%{q.strip().lower()}%"
+        unaccented = func.immutable_unaccent(func.lower(func.coalesce(User.full_name, "")))
+        stmt = stmt.where(unaccented.like(pattern) | User.email.like(pattern))
+    stmt = stmt.order_by(func.lower(func.coalesce(User.full_name, "")), User.email, User.id)
+    return list(db.scalars(stmt))
+
+
+def overview(db: Session) -> tuple[int, int, int]:
+    """US13: (obras, professores, convites pendentes) em consultas COUNT."""
+    books_count = db.scalar(select(func.count(Book.id))) or 0
+    teachers_count = (
+        db.scalar(select(func.count(User.id)).where(User.role == UserRole.TEACHER)) or 0
+    )
+    pending_invites = (
+        db.scalar(
+            select(func.count(User.id)).where(
+                User.role == UserRole.TEACHER,
+                User.status == UserStatus.INVITE_PENDING,
+            )
+        )
+        or 0
+    )
+    return books_count, teachers_count, pending_invites

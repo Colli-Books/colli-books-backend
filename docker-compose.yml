@@ -26,12 +26,14 @@ services:
         required: false
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-colli_books}
+      MEDIA_DIR: /code/media
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:
       - ./app:/code/app
       - ./alembic:/code/alembic
       - ./alembic.ini:/code/alembic.ini
+      - ./media:/code/media
     depends_on:
       db:
         condition: service_healthy
