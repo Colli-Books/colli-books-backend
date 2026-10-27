@@ -213,10 +213,29 @@ Os metadados da página ficam em `app/main.py`:
 
 ### E-mail
 
-Ainda não há provedor de e-mail. Os e-mails (convite, reenvio de convite e
-redefinição de senha) são escritos no log do backend (`docker compose logs -f backend`), com o link
-e o código. Para integrar um provedor, implemente o método `send` de
-`app/services/email.py` e devolva a nova classe em `get_email_sender`.
+Os e-mails (convite, reenvio de convite e redefinição de senha) são enviados
+pelo **Brevo**, pela API transacional, a partir de *templates* cadastrados no
+painel do Brevo — assunto, remetente e corpo ficam lá; o backend envia apenas
+o tipo de e-mail, o destinatário e os parâmetros (`link`, `code`,
+`expires_at`/`ttl_minutes`).
+
+Configuração no `.env`:
+
+| Variável | Para quê |
+|---|---|
+| `BREVO_API_KEY` | Chave da API (SMTP & Automation > SMTP & API). Vazia: os e-mails vão para o log do backend (`docker compose logs -f backend`). |
+| `BREVO_TEMPLATE_INVITE` | ID do template do convite novo |
+| `BREVO_TEMPLATE_INVITE_RENEWAL` | ID do template do convite renovado |
+| `BREVO_TEMPLATE_PASSWORD_RESET` | ID do template de redefinição de senha |
+
+O remetente precisa estar verificado no Brevo (SPF/DKIM do domínio da
+editora). Convite novo e renovado podem usar o mesmo template: basta repetir
+o ID.
+
+O envio roda **em background**, depois da resposta HTTP: uma falha no Brevo
+não quebra o request nem o atrasa — é registrada no log (tipo e destinatário),
+e todos os fluxos são recuperáveis (o link do convite também volta na resposta
+da API; há endpoints de reenvio e de novo pedido de redefinição).
 
 ## Testes automatizados
 

@@ -48,6 +48,17 @@ class Settings(BaseSettings):
     media_dir: str = "media"
     cover_max_bytes: int = 5 * 1024 * 1024
 
+    # --- E-mail transacional (Brevo) ----------------------------------------
+    # Chave da API (SMTP & Automation > SMTP & API no painel do Brevo). Vazia:
+    # os e-mails vão para o log (ConsoleEmailSender), como no desenvolvimento.
+    brevo_api_key: str = ""
+    # IDs dos templates transacionais criados no painel do Brevo (0 = não
+    # configurado; o envio com Brevo falha com erro no log). Convite novo e
+    # renovado podem compartilhar o mesmo template: basta repetir o ID.
+    brevo_template_invite: int = 0
+    brevo_template_invite_renewal: int = 0
+    brevo_template_password_reset: int = 0
+
     # --- Proteção contra força bruta --------------------------------------
     rate_limit_enabled: bool = True
 
