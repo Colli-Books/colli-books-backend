@@ -13,6 +13,7 @@ Para rodar localmente: `docker compose up -d db` e depois `pytest`.
 """
 
 import os
+import tempfile
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -28,9 +29,19 @@ TEST_DATABASE_URL = os.environ.get(
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 os.environ["APP_ENV"] = "test"
 os.environ["RATE_LIMIT_ENABLED"] = "false"
+# Nenhum teste conversa com o Brevo real, mesmo que o `.env` local tenha chave.
+os.environ["BREVO_API_KEY"] = ""
+# Idem para o JWT_SECRET do `.env` local (placeholder ou segredo real):
+# os testes de config assumem o segredo de desenvolvimento.
+from app.config import DEV_JWT_SECRET  # noqa: E402
+
+os.environ["JWT_SECRET"] = DEV_JWT_SECRET
+# Uploads de capa de teste não podem sujar a pasta media/ do projeto.
+os.environ["MEDIA_DIR"] = tempfile.mkdtemp(prefix="colli-test-media-")
 
 from alembic import command  # noqa: E402
 from alembic.config import Config  # noqa: E402
+from fastapi import BackgroundTasks  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import create_engine, text  # noqa: E402
 from sqlalchemy.engine import make_url  # noqa: E402
@@ -39,7 +50,7 @@ from sqlalchemy.orm import Session  # noqa: E402
 from app.database import engine, get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import User, UserRole  # noqa: E402
-from app.services.email import get_email_sender  # noqa: E402
+from app.services.email import BackgroundEmailSender, EmailSender, get_email_sender  # noqa: E402
 from tests.factories import create_user  # noqa: E402
 from tests.fakes import InMemoryEmailSender  # noqa: E402
 
@@ -107,9 +118,18 @@ def email_outbox() -> InMemoryEmailSender:
 
 @pytest.fixture()
 def client(db_session: Session, email_outbox: InMemoryEmailSender) -> Iterator[TestClient]:
-    """TestClient da aplicação, usando a sessão transacional e o e-mail em memória."""
+    """TestClient da aplicação, usando a sessão transacional e o e-mail em memória.
+
+    O override envolve o sender no `BackgroundEmailSender`, como em produção: o
+    TestClient espera as tasks de background terminarem antes de devolver a
+    resposta, então as asserções sobre o outbox continuam válidas.
+    """
+
+    def _sender(background_tasks: BackgroundTasks) -> EmailSender:
+        return BackgroundEmailSender(background_tasks, email_outbox)
+
     app.dependency_overrides[get_db] = lambda: db_session
-    app.dependency_overrides[get_email_sender] = lambda: email_outbox
+    app.dependency_overrides[get_email_sender] = _sender
     try:
         with TestClient(app) as test_client:
             yield test_client

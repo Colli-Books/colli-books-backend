@@ -12,7 +12,7 @@ from app.models import PasswordResetToken, User, UserStatus
 from app.security.passwords import hash_password, validate_password_strength
 from app.security.tokens import generate_opaque_token, hash_token
 from app.services.auth import normalize_email, revoke_all_sessions
-from app.services.email import EmailMessage, EmailSender
+from app.services.email import EmailKind, EmailMessage, EmailSender
 from app.services.links import build_app_link
 
 RESET_PATH = "redefinir-senha"
@@ -48,14 +48,12 @@ def request_password_reset(db: Session, sender: EmailSender, email: str) -> None
     sender.send(
         EmailMessage(
             to=user.email,
-            subject="Colli Books: redefinição de senha",
-            body=(
-                "Recebemos um pedido para redefinir sua senha.\n\n"
-                f"Abra no celular: {build_app_link(RESET_PATH, raw)}\n"
-                f"Ou cole este código no app: {raw}\n\n"
-                f"O link vale por {ttl_minutes} minutos. "
-                "Se você não pediu, ignore este e-mail: sua senha continua a mesma."
-            ),
+            kind=EmailKind.PASSWORD_RESET,
+            params={
+                "link": build_app_link(RESET_PATH, raw),
+                "code": raw,
+                "ttl_minutes": str(ttl_minutes),
+            },
         )
     )
 

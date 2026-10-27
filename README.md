@@ -1,6 +1,12 @@
 # Colli Books Backend
 
-Ambiente Docker com **PostgreSQL** e um **backend FastAPI** (hello world).
+Backend **FastAPI** + **PostgreSQL** da plataforma Colli Books, consumido pelo
+app Flutter (`colli-books-frontend`). Cobre autenticação e contas (convites,
+senha, sessões com refresh token), o catálogo de obras com busca e filtros,
+temas/escolaridades, perfil do professor, Minha Seleção e o painel do admin.
+
+Os contratos detalhados (formato de requisição/resposta, códigos de erro e as
+boas práticas para o app mobile) estão em `../Contratos API.md`, na raiz do TPPE.
 
 ## Pré-requisitos
 
@@ -28,10 +34,11 @@ colli-books-backend/
 │   │   ├── user.py       # users, invites, password_reset_tokens, refresh_tokens
 │   │   ├── catalog.py    # books, themes, education_levels, institutional_pages
 │   │   └── links.py      # tabelas de associação
-│   ├── services/         # MODEL: regras de negócio (convite, login, reset de senha)
+│   ├── services/         # MODEL: regras de negócio (convite, login, acervo, perfil, seeds)
 │   ├── views/            # VIEW: formato JSON de entrada e saída (Pydantic)
 │   ├── controllers/      # CONTROLLER: rotas HTTP (APIRouter), sem regra de negócio
 │   └── security/         # hash de senha, JWT e dependencies de autenticação
+├── media/                # capas enviadas pelo admin, servidas em /media (gitignored)
 ├── tests/
 │   ├── unit/
 │   └── integration/      # contra PostgreSQL real
@@ -95,7 +102,14 @@ docker compose exec backend alembic upgrade head
 docker compose exec backend python -m app.cli seed-admin --email admin@colli.com --name "Editora Colli"
 ```
 
-5. Acompanhe os logs (se estiver em segundo plano):
+5. Popule o acervo de demonstração (idempotente; temas, escolaridades, as obras
+   do protótipo e as páginas institucionais com URLs de base):
+
+```bash
+docker compose exec backend python -m app.cli seed-demo
+```
+
+6. Acompanhe os logs (se estiver em segundo plano):
 
 ```bash
 docker compose logs -f backend
@@ -115,9 +129,29 @@ A documentação é gerada automaticamente pelo FastAPI a partir do código, seg
 padrão [OpenAPI 3.1](https://www.openapis.org/). Não é preciso escrever nem manter
 nada à mão: ao adicionar um endpoint, ele aparece na página sozinho.
 
-Com os containers no ar, acesse **http://localhost:8000/docs** (Swagger UI). A página
-lista todos os endpoints agrupados por tag e permite **executar** as requisições direto
-do navegador, pelo botão *Try it out*.
+Com os containers no ar, acesse **http://localhost:8000/docs** — o Swagger UI
+oficial (SmartBear), servido pelo próprio backend: os assets (`app/static/swagger-ui/`)
+são locais, então a página funciona sem internet e sem depender de CDN. Ela lista
+todos os endpoints agrupados por tag, mostra parâmetros e modelos (Schemas) e
+permite **executar** as requisições direto do navegador, pelo botão *Try it out* —
+as chamadas batem no banco de verdade.
+
+**Rotas autenticadas:** rode `POST /api/v1/auth/login`, copie o `access_token` da
+resposta, clique em **Authorize** (cadeado no topo) e cole o token — a partir daí as
+rotas protegidas e de admin funcionam no *Try it out*. O token persiste após
+atualizar a página. As requisições vão sempre para a origem onde a página está
+sendo servida — ou seja, cada ambiente testa a si mesmo.
+
+### Spec versionada
+
+O contrato também é exportado em `openapi.yaml`, na raiz do repositório — serve
+para gerar o cliente do app (`openapi_generator`, seção 10.4 do contrato) e para
+comparar mudanças de API entre versões. Para regenerar depois de alterar rotas:
+
+```bash
+python -m app.cli export-openapi            # grava ./openapi.yaml
+python -m app.cli export-openapi --output api.json   # ou JSON pelo sufixo
+```
 
 ### Endpoints
 
@@ -126,16 +160,48 @@ do navegador, pelo botão *Try it out*.
 | `GET`  | `/`       | Root   | Hello world; confirma que a API está no ar | `200`      |
 | `GET`  | `/health` | Health | Executa `SELECT 1` no PostgreSQL           | `200`, `503` |
 | `POST` | `/api/v1/auth/login` | Auth | Login com e-mail e senha (US03) | `200`, `401`, `429` |
-| `POST` | `/api/v1/auth/refresh` | Auth | Troca o refresh token por um par novo (rotação) | `200`, `401` |
+| `POST` | `/api/v1/auth/refresh` | Auth | Troca o refresh token por um par novo (rotação) | `200`, `401`, `429` |
 | `POST` | `/api/v1/auth/logout` | Auth | Revoga o refresh token | `204` |
 | `GET`  | `/api/v1/auth/me` | Auth | Dados e papel do usuário logado (US05) | `200`, `401` |
 | `POST` | `/api/v1/auth/forgot-password` | Auth | Envia link de redefinição de senha (US04, US06) | `202`, `429` |
-| `POST` | `/api/v1/auth/reset-password` | Auth | Troca a senha e encerra as sessões (US04, US06) | `204`, `400`, `422` |
-| `POST` | `/api/v1/invites/verify` | Convites | Confere o convite e devolve o e-mail (US02) | `200`, `404`, `409`, `410` |
-| `POST` | `/api/v1/invites/accept` | Convites | Completa o cadastro (nome, escola opcional, senha), ativa a conta e autentica (US02) | `200`, `404`, `409`, `410`, `422` |
-| `POST` | `/api/v1/invites/resend` | Convites | Reenvia convite expirado por e-mail (US02) | `202` |
+| `POST` | `/api/v1/auth/reset-password` | Auth | Troca a senha e encerra as sessões (US04, US06) | `204`, `400`, `422`, `429` |
+| `POST` | `/api/v1/invites/verify` | Convites | Confere o convite e devolve o e-mail (US02) | `200`, `404`, `409`, `410`, `429` |
+| `POST` | `/api/v1/invites/accept` | Convites | Completa o cadastro (nome, escola opcional, senha), ativa a conta e autentica (US02) | `200`, `404`, `409`, `410`, `422`, `429` |
+| `POST` | `/api/v1/invites/resend` | Convites | Reenvia convite expirado por e-mail (US02) | `202`, `429` |
 | `POST` | `/api/v1/admin/teachers` | Admin | Cadastra professor, manda o convite por e-mail e devolve o link (US01) | `201`, `401`, `403`, `409` |
 | `POST` | `/api/v1/admin/teachers/{id}/invite` | Admin | Gera novo convite, invalida o anterior e manda por e-mail | `200`, `401`, `403`, `404`, `409` |
+| `GET`  | `/api/v1/admin/teachers` | Admin | Lista professores, com filtro `status` e busca `q` | `200`, `401`, `403` |
+| `GET`  | `/api/v1/admin/overview` | Admin | Contadores do painel: obras, professores, convites pendentes (US13) | `200`, `401`, `403` |
+| `GET`  | `/api/v1/books` | Obras | Catálogo com busca `q` (sem acento), filtros `theme_id`/`education_level_id` e `sort` (US07, US08, US11) | `200`, `401` |
+| `GET`  | `/api/v1/books/{id}` | Obras | Detalhe completo da obra (US09) | `200`, `401`, `404` |
+| `POST` | `/api/v1/books` | Obras | Cadastra obra — `multipart/form-data`, capa PNG/JPEG opcional (US15, US17) | `201`, `401`, `403`, `409`, `422` |
+| `PATCH` | `/api/v1/books/{id}` | Obras | Edição parcial — `multipart/form-data`; campo vazio limpa, `theme_ids=` remove os vínculos (US15, US17) | `200`, `401`, `403`, `404`, `409`, `422` |
+| `GET`  | `/api/v1/themes` | Temas | Lista temas (US08, US16) | `200`, `401` |
+| `POST` | `/api/v1/themes` | Temas | Cria tema (US16) | `201`, `401`, `403`, `409`, `422` |
+| `PATCH` | `/api/v1/themes/{id}` | Temas | Renomeia tema preservando vínculos (US16) | `200`, `401`, `403`, `404`, `409` |
+| `GET`  | `/api/v1/education-levels` | Escolaridades | Lista escolaridades na ordem pedagógica (US08, US16) | `200`, `401` |
+| `POST` | `/api/v1/education-levels` | Escolaridades | Cria escolaridade (US16) | `201`, `401`, `403`, `409`, `422` |
+| `PATCH` | `/api/v1/education-levels/{id}` | Escolaridades | Renomeia/reordena escolaridade (US16) | `200`, `401`, `403`, `404`, `409` |
+| `PATCH` | `/api/v1/me` | Perfil | Atualiza nome e escola do usuário logado (US10) | `200`, `401`, `422` |
+| `PUT`  | `/api/v1/me/password` | Perfil | Troca a senha (exige a atual) e encerra as sessões | `204`, `400`, `401`, `422` |
+| `PUT`  | `/api/v1/me/interests` | Perfil | Substitui os temas/escolaridades que o professor leciona (US11) | `200`, `401`, `422` |
+| `GET`  | `/api/v1/me/saved-books` | Perfil | Minha Seleção, da obra salva mais recente à mais antiga (US12) | `200`, `401` |
+| `PUT`  | `/api/v1/me/saved-books/{book_id}` | Perfil | Salva obra na seleção — idempotente (US12) | `204`, `401`, `404` |
+| `DELETE` | `/api/v1/me/saved-books/{book_id}` | Perfil | Remove obra da seleção — idempotente (US12) | `204`, `401`, `404` |
+| `GET`  | `/media/covers/{arquivo}` | — | Capas enviadas pelo admin (estático, fora de `/api/v1`) | `200`, `404` |
+
+**Listas não são paginadas** (acervo e professores são poucos registros; o app
+monta os filtros com os dados retornados). As convenções completas — erros,
+idempotência, PATCH multipart — estão em `../Contratos API.md`.
+
+### Upload de capas
+
+`POST/PATCH /api/v1/books` aceitam a capa no campo `cover` do form multipart
+(PNG ou JPEG, até 5 MB — o tipo é conferido pelos bytes do arquivo, não só pelo
+`Content-Type`). Os arquivos ficam em `media/covers/`, servidos em `GET
+/media/covers/{arquivo}`, e a obra guarda o caminho relativo em `cover_url` —
+o app resolve contra a base URL. Configuração por ambiente: `MEDIA_DIR`
+(pasta) e `COVER_MAX_BYTES` (tamanho máximo).
 
 ### Testando o backend
 
@@ -158,19 +224,42 @@ docker compose start db
 
 Os metadados da página ficam em `app/main.py`:
 
-- `FastAPI(title=..., description=..., version=..., openapi_tags=...)` controla o
-  cabeçalho da página e a descrição de cada tag.
+- `FastAPI(title=..., description=..., version=..., openapi_tags=...)`
+  controla o cabeçalho e a descrição de cada tag.
 - Em cada rota, `tags`, `summary`, `description` e `response_model` definem como o
-  endpoint aparece na documentação.
+  endpoint aparece na documentação; `responses={status: {"model": ErrorResponse,
+  "description": "..."}}` documenta os erros com os códigos do contrato
+  (`app/errors.py`). O `422` já é declarado no `api_router` inteiro e os blocos
+  `VALIDATION_RESPONSE`/`RATE_LIMITED_RESPONSE` de `app/views/errors.py` são
+  reutilizáveis.
 - Os modelos Pydantic de `app/views/` viram os *schemas* exibidos
   no rodapé da página, com os exemplos definidos em `Field(..., examples=[...])`.
 
 ### E-mail
 
-Ainda não há provedor de e-mail. Os e-mails (convite, reenvio de convite e
-redefinição de senha) são escritos no log do backend (`docker compose logs -f backend`), com o link
-e o código. Para integrar um provedor, implemente o método `send` de
-`app/services/email.py` e devolva a nova classe em `get_email_sender`.
+Os e-mails (convite, reenvio de convite e redefinição de senha) são enviados
+pelo **Brevo**, pela API transacional, a partir de *templates* cadastrados no
+painel do Brevo — assunto, remetente e corpo ficam lá; o backend envia apenas
+o tipo de e-mail, o destinatário e os parâmetros (`link`, `code`,
+`expires_at`/`ttl_minutes`).
+
+Configuração no `.env`:
+
+| Variável | Para quê |
+|---|---|
+| `BREVO_API_KEY` | Chave da API (SMTP & Automation > SMTP & API). Vazia: os e-mails vão para o log do backend (`docker compose logs -f backend`). |
+| `BREVO_TEMPLATE_INVITE` | ID do template do convite novo |
+| `BREVO_TEMPLATE_INVITE_RENEWAL` | ID do template do convite renovado |
+| `BREVO_TEMPLATE_PASSWORD_RESET` | ID do template de redefinição de senha |
+
+O remetente precisa estar verificado no Brevo (SPF/DKIM do domínio da
+editora). Convite novo e renovado podem usar o mesmo template: basta repetir
+o ID.
+
+O envio roda **em background**, depois da resposta HTTP: uma falha no Brevo
+não quebra o request nem o atrasa — é registrada no log (tipo e destinatário),
+e todos os fluxos são recuperáveis (o link do convite também volta na resposta
+da API; há endpoints de reenvio e de novo pedido de redefinição).
 
 ## Testes automatizados
 

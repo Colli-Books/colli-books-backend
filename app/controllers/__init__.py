@@ -11,11 +11,16 @@ continuam funcionando.
 
 from fastapi import APIRouter
 
-from app.controllers import admin, auth, invites
+from app.controllers import admin, auth, books, education_levels, invites, me, themes
+from app.views.errors import VALIDATION_RESPONSE
 
 API_V1_PREFIX = "/api/v1"
 
-api_router = APIRouter(prefix=API_V1_PREFIX)
+api_router = APIRouter(prefix=API_V1_PREFIX, responses=VALIDATION_RESPONSE)
 api_router.include_router(auth.router)
 api_router.include_router(invites.router)
 api_router.include_router(admin.router)
+api_router.include_router(themes.router)
+api_router.include_router(education_levels.router)
+api_router.include_router(books.router)
+api_router.include_router(me.router)

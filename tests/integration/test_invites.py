@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Invite, User, UserStatus
 from app.security.tokens import hash_token
+from app.services.email import EmailKind
 from app.services.invites import issue_invite
 from tests.factories import create_user
 from tests.fakes import InMemoryEmailSender
@@ -192,9 +193,10 @@ def test_reenviar_convite_expirado_manda_link_novo_por_email(
     assert invite_code not in response.text
     [message] = email_outbox.outbox
     assert message.to == "convidado@escola.com"
-    assert "collibooks://convite?token=" in message.body
+    assert message.kind == EmailKind.INVITE_RENEWAL
+    assert message.params["link"].startswith("collibooks://convite?token=")
 
-    new_code = message.body.split("token=")[1].split()[0]
+    new_code = message.params["code"]
     assert client.post(VERIFY, json={"token": new_code}).status_code == 200
     assert client.post(VERIFY, json={"token": invite_code}).json()["code"] == "INVITE_INVALID"
 

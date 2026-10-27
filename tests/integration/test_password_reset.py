@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.models import PasswordResetToken, User, UserRole, UserStatus
 from app.security.tokens import hash_token
+from app.services.email import EmailKind
 from tests.factories import DEFAULT_PASSWORD, create_user
 from tests.fakes import InMemoryEmailSender
 
@@ -25,7 +26,7 @@ def user(request: pytest.FixtureRequest, db_session: Session) -> User:
 
 def _request_token(client: TestClient, outbox: InMemoryEmailSender, email: str) -> str:
     client.post(FORGOT, json={"email": email})
-    return outbox.outbox[-1].body.split("token=")[1].split()[0]
+    return outbox.outbox[-1].params["code"]
 
 
 def _login(client: TestClient, password: str):
@@ -40,7 +41,10 @@ def test_pedido_envia_link_de_redefinicao(
     assert response.status_code == 202
     [message] = email_outbox.outbox
     assert message.to == "conta@colli.com"
-    assert "collibooks://redefinir-senha?token=" in message.body
+    assert message.kind == EmailKind.PASSWORD_RESET
+    assert message.params["link"].startswith("collibooks://redefinir-senha?token=")
+    assert message.params["code"]
+    assert message.params["ttl_minutes"] == "30"
 
 
 def test_resposta_e_identica_para_email_existente_e_inexistente(

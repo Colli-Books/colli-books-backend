@@ -1,20 +1,33 @@
-"""US01: rotas da editora (administrador)."""
+"""Rotas da editora (administrador): convites (US01), gestão e painel (US13)."""
 
-from fastapi import APIRouter, Depends, status
+from typing import Annotated
 
-from app.models import User
+from fastapi import APIRouter, Depends, Query, status
+
+from app.models import User, UserStatus
 from app.security.dependencies import AdminUser, DbSession
 from app.services import teachers as teachers_service
 from app.services.email import EmailSender, get_email_sender
 from app.services.invites import IssuedInvite
 from app.views.errors import ErrorResponse
-from app.views.teachers import TeacherCreateRequest, TeacherInviteResponse
+from app.views.teachers import (
+    AdminOverviewResponse,
+    TeacherCreateRequest,
+    TeacherInviteResponse,
+)
+from app.views.users import UserResponse
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
 _AUTH_ERRORS = {
-    status.HTTP_401_UNAUTHORIZED: {"model": ErrorResponse},
-    status.HTTP_403_FORBIDDEN: {"model": ErrorResponse},
+    status.HTTP_401_UNAUTHORIZED: {
+        "model": ErrorResponse,
+        "description": "`UNAUTHENTICATED` ou `TOKEN_INVALID`.",
+    },
+    status.HTTP_403_FORBIDDEN: {
+        "model": ErrorResponse,
+        "description": "`FORBIDDEN` (exige papel `admin`).",
+    },
 }
 
 
@@ -40,7 +53,13 @@ def _invite_response(user: User, invite: IssuedInvite) -> TeacherInviteResponse:
     ),
     status_code=status.HTTP_201_CREATED,
     response_model=TeacherInviteResponse,
-    responses={**_AUTH_ERRORS, status.HTTP_409_CONFLICT: {"model": ErrorResponse}},
+    responses={
+        **_AUTH_ERRORS,
+        status.HTTP_409_CONFLICT: {
+            "model": ErrorResponse,
+            "description": "`EMAIL_ALREADY_REGISTERED`.",
+        },
+    },
 )
 def create_teacher(
     body: TeacherCreateRequest,
@@ -60,8 +79,14 @@ def create_teacher(
     response_model=TeacherInviteResponse,
     responses={
         **_AUTH_ERRORS,
-        status.HTTP_404_NOT_FOUND: {"model": ErrorResponse},
-        status.HTTP_409_CONFLICT: {"model": ErrorResponse},
+        status.HTTP_404_NOT_FOUND: {
+            "model": ErrorResponse,
+            "description": "`NOT_FOUND` (professor não existe).",
+        },
+        status.HTTP_409_CONFLICT: {
+            "model": ErrorResponse,
+            "description": "`ACCOUNT_ALREADY_ACTIVE` (cadastro já completado).",
+        },
     },
 )
 def reissue_invite(
@@ -71,3 +96,48 @@ def reissue_invite(
     sender: EmailSender = Depends(get_email_sender),  # noqa: B008
 ) -> TeacherInviteResponse:
     return _invite_response(*teachers_service.reissue_teacher_invite(db, sender, teacher_id))
+
+
+@router.get(
+    "/teachers",
+    summary="Listar professores",
+    description=(
+        "Todos os professores, com filtro por `status` (`invite_pending` | `active` | "
+        '`inactive`) e busca `q` por nome/e-mail. O filtro "todos/ativos/pendentes" '
+        "da tela vira o parâmetro `status`; sem ele, a lista volta completa — a "
+        "base é pequena e o app monta os filtros sobre ela."
+    ),
+    response_model=list[UserResponse],
+    responses={
+        **_AUTH_ERRORS,
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {
+            "model": ErrorResponse,
+            "description": "`VALIDATION_ERROR`.",
+        },
+    },
+)
+def list_teachers(
+    db: DbSession,
+    _: AdminUser,
+    status_filter: Annotated[UserStatus | None, Query(alias="status")] = None,
+    q: Annotated[str | None, Query(max_length=255)] = None,
+) -> list[UserResponse]:
+    teachers = teachers_service.list_teachers(db, status_filter=status_filter, q=q)
+    return [UserResponse.model_validate(t) for t in teachers]
+
+
+@router.get(
+    "/overview",
+    summary="Visão geral do painel",
+    description=(
+        "Contadores do painel do admin (US13) em uma única chamada: total de "
+        "obras, total de professores e convites pendentes."
+    ),
+    response_model=AdminOverviewResponse,
+    responses=_AUTH_ERRORS,
+)
+def get_overview(db: DbSession, _: AdminUser) -> AdminOverviewResponse:
+    books, teachers, pending = teachers_service.overview(db)
+    return AdminOverviewResponse(
+        books_count=books, teachers_count=teachers, pending_invites_count=pending
+    )

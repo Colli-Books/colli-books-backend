@@ -1,14 +1,25 @@
 """US01: cadastro de professor pela editora."""
 
+import logging
 from datetime import UTC, datetime, timedelta
 from urllib.parse import parse_qs, urlparse
 
+import pytest
+from fastapi import BackgroundTasks
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.main import app
 from app.models import Invite, User, UserStatus
 from app.security.tokens import hash_token
+from app.services.email import (
+    BackgroundEmailSender,
+    EmailKind,
+    EmailMessage,
+    EmailSender,
+    get_email_sender,
+)
 from tests.factories import auth_headers, create_user
 from tests.fakes import InMemoryEmailSender
 
@@ -50,9 +61,10 @@ def test_cadastro_manda_o_convite_para_o_email_do_professor(
 
     [message] = email_outbox.outbox
     assert message.to == "novo@escola.com"
-    assert "complete seu cadastro" in message.subject
-    assert body["invite_link"] in message.body
-    assert body["invite_code"] in message.body
+    assert message.kind == EmailKind.INVITE
+    assert message.params["link"] == body["invite_link"]
+    assert message.params["code"] == body["invite_code"]
+    assert message.params["expires_at"]
 
 
 def test_email_duplicado_nao_manda_email(
@@ -64,6 +76,31 @@ def test_email_duplicado_nao_manda_email(
     _create(client, admin_user, "dup@escola.com")
 
     assert email_outbox.outbox == []
+
+
+class _FailingSender:
+    """Provê `send` que sempre falha, como um provedor fora do ar."""
+
+    def send(self, message: EmailMessage) -> None:
+        raise RuntimeError("provedor fora do ar")
+
+
+def test_falha_no_envio_do_email_nao_quebra_a_resposta(
+    client: TestClient, admin_user: User, caplog: pytest.LogCaptureFixture
+) -> None:
+    """O envio é em background: um provedor fora do ar não muda o contrato (201)."""
+
+    def _failing(background_tasks: BackgroundTasks) -> EmailSender:
+        return BackgroundEmailSender(background_tasks, _FailingSender())
+
+    app.dependency_overrides[get_email_sender] = _failing
+
+    with caplog.at_level(logging.ERROR, logger="app.services.email"):
+        response = _create(client, admin_user, "falha@escola.com")
+
+    assert response.status_code == 201
+    assert response.json()["invite_link"]
+    assert "Falha ao enviar e-mail para falha@escola.com (tipo=invite)" in caplog.text
 
 
 def test_email_duplicado_responde_409(client: TestClient, admin_user: User) -> None:
@@ -120,7 +157,8 @@ def test_novo_convite_substitui_o_anterior_e_vai_por_email(
     assert list(hashes) == [hash_token(response.json()["invite_code"])]
     [message] = email_outbox.outbox
     assert message.to == first["email"]
-    assert response.json()["invite_link"] in message.body
+    assert message.kind == EmailKind.INVITE_RENEWAL
+    assert message.params["link"] == response.json()["invite_link"]
 
 
 def test_novo_convite_para_professor_ativo_responde_409(

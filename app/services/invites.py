@@ -12,7 +12,7 @@ from app.errors import AppError, ErrorCode
 from app.models import Invite, User, UserStatus
 from app.security.passwords import hash_password, validate_password_strength
 from app.security.tokens import generate_opaque_token, hash_token
-from app.services.email import EmailMessage, EmailSender
+from app.services.email import EmailKind, EmailMessage, EmailSender
 from app.services.links import build_app_link
 
 INVITE_PATH = "convite"
@@ -44,24 +44,20 @@ def issue_invite(db: Session, user: User) -> IssuedInvite:
 def send_invite_email(
     sender: EmailSender, user: User, invite: IssuedInvite, *, renewed: bool = False
 ) -> None:
-    """Manda o link de convite para o e-mail do professor."""
-    if renewed:
-        subject = "Colli Books: seu novo convite"
-        intro = "Seu convite para o Colli Books foi renovado."
-    else:
-        subject = "Colli Books: complete seu cadastro"
-        intro = "A Editora Colli convidou você para acessar o acervo do Colli Books."
+    """Manda o link de convite para o e-mail do professor.
+
+    Assunto, remetente e corpo são do template do Brevo (`BREVO_TEMPLATE_INVITE`
+    ou `BREVO_TEMPLATE_INVITE_RENEWAL`); aqui só vão os params do template.
+    """
     sender.send(
         EmailMessage(
             to=user.email,
-            subject=subject,
-            body=(
-                f"{intro}\n\n"
-                "Para entrar, complete seu cadastro (nome, escola e senha).\n\n"
-                f"Abra no celular: {invite.link}\n"
-                f'Ou cole este código no app, em "Tenho um convite": {invite.code}\n\n'
-                f"O convite vale até {invite.expires_at:%d/%m/%Y %H:%M} (UTC)."
-            ),
+            kind=EmailKind.INVITE_RENEWAL if renewed else EmailKind.INVITE,
+            params={
+                "link": invite.link,
+                "code": invite.code,
+                "expires_at": f"{invite.expires_at:%d/%m/%Y %H:%M} (UTC)",
+            },
         )
     )
 

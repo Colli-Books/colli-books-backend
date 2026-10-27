@@ -16,13 +16,18 @@ from app.views.auth import (
     ResetPasswordRequest,
     TokenResponse,
 )
-from app.views.errors import ErrorResponse
+from app.views.errors import RATE_LIMITED_RESPONSE, ErrorResponse
 from app.views.invites import MessageResponse
 from app.views.users import UserResponse
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
-_UNAUTHORIZED = {status.HTTP_401_UNAUTHORIZED: {"model": ErrorResponse}}
+_UNAUTHORIZED = {
+    status.HTTP_401_UNAUTHORIZED: {
+        "model": ErrorResponse,
+        "description": "`UNAUTHENTICATED` (token ausente ou conta inativa) ou `TOKEN_INVALID`.",
+    }
+}
 
 
 def token_response(tokens: SessionTokens) -> TokenResponse:
@@ -42,7 +47,13 @@ def token_response(tokens: SessionTokens) -> TokenResponse:
         f"convite pendente, conta inativa) responde `401 {ErrorCode.INVALID_CREDENTIALS}`."
     ),
     response_model=TokenResponse,
-    responses=_UNAUTHORIZED,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {
+            "model": ErrorResponse,
+            "description": "`INVALID_CREDENTIALS`.",
+        },
+        **RATE_LIMITED_RESPONSE,
+    },
 )
 @limiter.limit("10/minute")
 def login(request: Request, body: LoginRequest, db: DbSession) -> TokenResponse:
@@ -59,7 +70,13 @@ def login(request: Request, body: LoginRequest, db: DbSession) -> TokenResponse:
         f"Qualquer falha responde `401 {ErrorCode.TOKEN_INVALID}`: o app deve voltar ao login."
     ),
     response_model=TokenResponse,
-    responses=_UNAUTHORIZED,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {
+            "model": ErrorResponse,
+            "description": "`TOKEN_INVALID`.",
+        },
+        **RATE_LIMITED_RESPONSE,
+    },
 )
 @limiter.limit("30/minute")
 def refresh(request: Request, body: RefreshTokenRequest, db: DbSession) -> TokenResponse:
@@ -97,6 +114,7 @@ def me(user: CurrentUser) -> UserResponse:
     ),
     status_code=status.HTTP_202_ACCEPTED,
     response_model=MessageResponse,
+    responses=RATE_LIMITED_RESPONSE,
 )
 @limiter.limit("5/minute")
 def forgot_password(
@@ -121,8 +139,15 @@ def forgot_password(
     ),
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
-        status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse},
-        status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": ErrorResponse},
+        status.HTTP_400_BAD_REQUEST: {
+            "model": ErrorResponse,
+            "description": "`RESET_TOKEN_INVALID` (token inválido, já usado ou expirado).",
+        },
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {
+            "model": ErrorResponse,
+            "description": "`VALIDATION_ERROR` ou `WEAK_PASSWORD`.",
+        },
+        **RATE_LIMITED_RESPONSE,
     },
 )
 @limiter.limit("10/minute")
