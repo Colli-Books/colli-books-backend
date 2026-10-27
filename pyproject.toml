@@ -1,3 +1,24 @@
+# As dependências ficam aqui porque o runtime da Vercel (uv) instala a partir do
+# pyproject.toml quando ele existe — requirements.txt é usado pelo Dockerfile e
+# pelo venv local. Manter as duas listas em sync.
+[project]
+name = "colli-books-backend"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi==0.115.6",
+    "uvicorn[standard]==0.34.0",
+    "sqlalchemy==2.0.36",
+    "psycopg[binary]==3.2.3",
+    "alembic==1.14.0",
+    "pydantic-settings==2.15.0",
+    "email-validator==2.3.0",
+    "PyJWT==2.15.1",
+    "pwdlib[argon2]==0.3.1",
+    "slowapi==0.1.10",
+    "python-multipart==0.0.20",
+]
+
 [tool.ruff]
 target-version = "py312"
 line-length = 100
