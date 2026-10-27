@@ -16,12 +16,26 @@ from app.views.errors import ErrorResponse
 
 router = APIRouter(prefix="/books", tags=["Obras"])
 
-_AUTH = {status.HTTP_401_UNAUTHORIZED: {"model": ErrorResponse}}
+_AUTH = {
+    status.HTTP_401_UNAUTHORIZED: {
+        "model": ErrorResponse,
+        "description": "`UNAUTHENTICATED` ou `TOKEN_INVALID`.",
+    }
+}
 _ADMIN_ERRORS = {
     **_AUTH,
-    status.HTTP_403_FORBIDDEN: {"model": ErrorResponse},
-    status.HTTP_409_CONFLICT: {"model": ErrorResponse},
-    status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": ErrorResponse},
+    status.HTTP_403_FORBIDDEN: {
+        "model": ErrorResponse,
+        "description": "`FORBIDDEN` (exige papel `admin`).",
+    },
+    status.HTTP_409_CONFLICT: {
+        "model": ErrorResponse,
+        "description": "`ISBN_ALREADY_REGISTERED`.",
+    },
+    status.HTTP_422_UNPROCESSABLE_ENTITY: {
+        "model": ErrorResponse,
+        "description": "`VALIDATION_ERROR`, `IMAGE_INVALID` ou `IMAGE_TOO_LARGE`.",
+    },
 }
 
 
@@ -61,7 +75,13 @@ def list_books(
         "(`store_url`, `book_url`, `pedagogical_material_url`) e `is_saved`."
     ),
     response_model=BookDetail,
-    responses={**_AUTH, status.HTTP_404_NOT_FOUND: {"model": ErrorResponse}},
+    responses={
+        **_AUTH,
+        status.HTTP_404_NOT_FOUND: {
+            "model": ErrorResponse,
+            "description": "`NOT_FOUND`.",
+        },
+    },
 )
 def get_book(book_id: int, user: CurrentUser, db: DbSession) -> BookDetail:
     book, is_saved = books_service.get_book(db, user, book_id)
@@ -102,7 +122,13 @@ def create_book(
         "substitui. As alterações refletem imediatamente na busca."
     ),
     response_model=BookDetail,
-    responses={**_ADMIN_ERRORS, status.HTTP_404_NOT_FOUND: {"model": ErrorResponse}},
+    responses={
+        **_ADMIN_ERRORS,
+        status.HTTP_404_NOT_FOUND: {
+            "model": ErrorResponse,
+            "description": "`NOT_FOUND`.",
+        },
+    },
 )
 def update_book(
     book_id: int,

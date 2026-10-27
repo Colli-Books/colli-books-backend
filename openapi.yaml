@@ -1,0 +1,2304 @@
+openapi: 3.1.0
+info:
+  title: Colli Books API
+  description: '
+
+    API do projeto **Colli Books**
+
+    '
+  version: 0.1.0
+paths:
+  /:
+    get:
+      tags:
+      - Root
+      summary: Hello World
+      description: Retorna uma mensagem estática para confirmar que a API está no
+        ar.
+      operationId: hello_world__get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HelloResponse'
+  /health:
+    get:
+      tags:
+      - Health
+      summary: Health check
+      description: Executa um `SELECT 1` no PostgreSQL. Responde **200** quando o
+        banco está acessível e **503** quando não está.
+      operationId: health_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: O banco de dados não está acessível.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /api/v1/auth/login:
+    post:
+      tags:
+      - Auth
+      summary: Login
+      description: Autentica com e-mail e senha. Qualquer falha (e-mail inexistente,
+        senha errada, convite pendente, conta inativa) responde `401 INVALID_CREDENTIALS`.
+      operationId: login_api_v1_auth_login_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '422':
+          description: '`VALIDATION_ERROR`; campos inválidos em `details`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`INVALID_CREDENTIALS`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: '`RATE_LIMITED`; aguardar o header `Retry-After` antes de tentar
+            de novo.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/auth/refresh:
+    post:
+      tags:
+      - Auth
+      summary: Renovar sessão
+      description: 'Troca o refresh token por um par novo. O token enviado deixa de
+        valer. Reusar um token já trocado encerra todas as sessões do usuário. Qualquer
+        falha responde `401 TOKEN_INVALID`: o app deve voltar ao login.'
+      operationId: refresh_api_v1_auth_refresh_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '422':
+          description: '`VALIDATION_ERROR`; campos inválidos em `details`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`TOKEN_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: '`RATE_LIMITED`; aguardar o header `Retry-After` antes de tentar
+            de novo.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/auth/logout:
+    post:
+      tags:
+      - Auth
+      summary: Logout
+      description: Revoga o refresh token informado. Sempre responde `204`, mesmo
+        se já revogado.
+      operationId: logout_api_v1_auth_logout_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+        required: true
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: '`VALIDATION_ERROR`; campos inválidos em `details`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/auth/me:
+    get:
+      tags:
+      - Auth
+      summary: Usuário logado
+      description: Dados do usuário dono do access token. O app usa `role` para exibir
+        a área admin.
+      operationId: me_api_v1_auth_me_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '422':
+          description: '`VALIDATION_ERROR`; campos inválidos em `details`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`UNAUTHENTICATED` (token ausente ou conta inativa) ou `TOKEN_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - HTTPBearer: []
+  /api/v1/auth/forgot-password:
+    post:
+      tags:
+      - Auth
+      summary: Esqueci minha senha
+      description: Envia o link de redefinição para o e-mail, se houver conta ativa.
+        Sempre responde `202` com a mesma mensagem, para não revelar se o e-mail está
+        cadastrado.
+      operationId: forgot_password_api_v1_auth_forgot_password_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPasswordRequest'
+        required: true
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '422':
+          description: '`VALIDATION_ERROR`; campos inválidos em `details`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: '`RATE_LIMITED`; aguardar o header `Retry-After` antes de tentar
+            de novo.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/auth/reset-password:
+    post:
+      tags:
+      - Auth
+      summary: Redefinir senha
+      description: 'Troca a senha usando o token do link. O token vale uma vez só
+        e todas as sessões abertas são encerradas. Token inválido, usado ou expirado:
+        `400 RESET_TOKEN_INVALID`; senha fraca: `422 WEAK_PASSWORD`.'
+      operationId: reset_password_api_v1_auth_reset_password_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+        required: true
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: '`VALIDATION_ERROR` ou `WEAK_PASSWORD`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: '`RESET_TOKEN_INVALID` (token inválido, já usado ou expirado).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: '`RATE_LIMITED`; aguardar o header `Retry-After` antes de tentar
+            de novo.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/invites/verify:
+    post:
+      tags:
+      - Convites
+      summary: Conferir convite
+      description: Confere o convite sem consumi-lo e devolve o e-mail, para a tela
+        de completar o cadastro.
+      operationId: verify_api_v1_invites_verify_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteTokenRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteVerifyResponse'
+        '422':
+          description: '`VALIDATION_ERROR`; campos inválidos em `details`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: '`INVITE_INVALID`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: '`INVITE_ALREADY_USED`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '410':
+          description: '`INVITE_EXPIRED`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: '`RATE_LIMITED`; aguardar o header `Retry-After` antes de tentar
+            de novo.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/invites/accept:
+    post:
+      tags:
+      - Convites
+      summary: Completar cadastro pelo convite
+      description: Grava nome (obrigatório), escola (opcional) e senha (mín. 8 caracteres),
+        ativa a conta e já devolve a sessão autenticada. Senha fraca responde `422
+        WEAK_PASSWORD`; nome vazio, `422 VALIDATION_ERROR`.
+      operationId: accept_api_v1_invites_accept_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteAcceptRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '422':
+          description: '`VALIDATION_ERROR` ou `WEAK_PASSWORD`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: '`INVITE_INVALID`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: '`INVITE_ALREADY_USED`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '410':
+          description: '`INVITE_EXPIRED`'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: '`RATE_LIMITED`; aguardar o header `Retry-After` antes de tentar
+            de novo.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/invites/resend:
+    post:
+      tags:
+      - Convites
+      summary: Reenviar convite expirado
+      description: Se o convite estiver expirado e não usado, gera um novo e o envia
+        para o e-mail cadastrado. Sempre responde `202` com a mesma mensagem; o link
+        novo nunca volta aqui.
+      operationId: resend_api_v1_invites_resend_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteTokenRequest'
+        required: true
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '422':
+          description: '`VALIDATION_ERROR`; campos inválidos em `details`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: '`RATE_LIMITED`; aguardar o header `Retry-After` antes de tentar
+            de novo.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/admin/teachers:
+    post:
+      tags:
+      - Admin
+      summary: Cadastrar professor
+      description: Cria o professor com status `invite_pending` e manda o link de
+        convite para o e-mail dele, onde ele completa o cadastro (nome, escola e senha).
+        O link também volta na resposta, para a editora reenviar por outro canal.
+        Enquanto o cadastro não for completado, o login fica bloqueado.
+      operationId: create_teacher_api_v1_admin_teachers_post
+      security:
+      - HTTPBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeacherCreateRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherInviteResponse'
+        '422':
+          description: '`VALIDATION_ERROR`; campos inválidos em `details`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`UNAUTHENTICATED` ou `TOKEN_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: '`FORBIDDEN` (exige papel `admin`).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: '`EMAIL_ALREADY_REGISTERED`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags:
+      - Admin
+      summary: Listar professores
+      description: Todos os professores, com filtro por `status` (`invite_pending`
+        | `active` | `inactive`) e busca `q` por nome/e-mail. O filtro "todos/ativos/pendentes"
+        da tela vira o parâmetro `status`; sem ele, a lista volta completa — a base
+        é pequena e o app monta os filtros sobre ela.
+      operationId: list_teachers_api_v1_admin_teachers_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/UserStatus'
+          - type: 'null'
+          title: Status
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Q
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserResponse'
+                title: Response List Teachers Api V1 Admin Teachers Get
+        '422':
+          description: '`VALIDATION_ERROR`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`UNAUTHENTICATED` ou `TOKEN_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: '`FORBIDDEN` (exige papel `admin`).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/admin/teachers/{teacher_id}/invite:
+    post:
+      tags:
+      - Admin
+      summary: Gerar novo convite
+      description: Invalida os convites pendentes do professor, gera um novo link
+        e o manda por e-mail.
+      operationId: reissue_invite_api_v1_admin_teachers__teacher_id__invite_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: teacher_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Teacher Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeacherInviteResponse'
+        '422':
+          description: '`VALIDATION_ERROR`; campos inválidos em `details`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`UNAUTHENTICATED` ou `TOKEN_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: '`FORBIDDEN` (exige papel `admin`).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: '`NOT_FOUND` (professor não existe).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: '`ACCOUNT_ALREADY_ACTIVE` (cadastro já completado).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/admin/overview:
+    get:
+      tags:
+      - Admin
+      summary: Visão geral do painel
+      description: 'Contadores do painel do admin (US13) em uma única chamada: total
+        de obras, total de professores e convites pendentes.'
+      operationId: get_overview_api_v1_admin_overview_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOverviewResponse'
+        '422':
+          description: '`VALIDATION_ERROR`; campos inválidos em `details`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`UNAUTHENTICATED` ou `TOKEN_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: '`FORBIDDEN` (exige papel `admin`).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - HTTPBearer: []
+  /api/v1/themes:
+    get:
+      tags:
+      - Temas
+      summary: Listar temas
+      description: Temas disponíveis, em ordem alfabética. Lista pequena, sem paginação.
+      operationId: list_themes_api_v1_themes_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ThemeResponse'
+                type: array
+                title: Response List Themes Api V1 Themes Get
+        '422':
+          description: '`VALIDATION_ERROR`; campos inválidos em `details`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`UNAUTHENTICATED` ou `TOKEN_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - HTTPBearer: []
+    post:
+      tags:
+      - Temas
+      summary: Criar tema
+      description: 'Não é permitido cadastrar dois temas com o mesmo nome, mesmo mudando
+        a caixa: duplicata responde `409` (`THEME_ALREADY_EXISTS`).'
+      operationId: create_theme_api_v1_themes_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ThemeCreateRequest'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThemeResponse'
+        '422':
+          description: '`VALIDATION_ERROR`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`UNAUTHENTICATED` ou `TOKEN_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: '`FORBIDDEN` (exige papel `admin`).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: '`THEME_ALREADY_EXISTS`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - HTTPBearer: []
+  /api/v1/themes/{theme_id}:
+    patch:
+      tags:
+      - Temas
+      summary: Renomear tema
+      description: 'PATCH parcial: campo ausente no corpo significa "não alterar".
+        Renomear preserva os vínculos com as obras (US16).'
+      operationId: update_theme_api_v1_themes__theme_id__patch
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: theme_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Theme Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ThemeUpdateRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThemeResponse'
+        '422':
+          description: '`VALIDATION_ERROR`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`UNAUTHENTICATED` ou `TOKEN_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: '`FORBIDDEN` (exige papel `admin`).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: '`THEME_ALREADY_EXISTS`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: '`NOT_FOUND`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/education-levels:
+    get:
+      tags:
+      - Escolaridades
+      summary: Listar escolaridades
+      description: Escolaridades na ordem pedagógica (`sort_order`), desempatadas
+        pelo nome. Lista pequena, sem paginação.
+      operationId: list_education_levels_api_v1_education_levels_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/EducationLevelResponse'
+                type: array
+                title: Response List Education Levels Api V1 Education Levels Get
+        '422':
+          description: '`VALIDATION_ERROR`; campos inválidos em `details`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`UNAUTHENTICATED` ou `TOKEN_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - HTTPBearer: []
+    post:
+      tags:
+      - Escolaridades
+      summary: Criar escolaridade
+      description: 'Não é permitido cadastrar duas escolaridades com o mesmo nome,
+        mesmo mudando a caixa: duplicata responde `409` (`EDUCATION_LEVEL_ALREADY_EXISTS`).'
+      operationId: create_education_level_api_v1_education_levels_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EducationLevelCreateRequest'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EducationLevelResponse'
+        '422':
+          description: '`VALIDATION_ERROR`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`UNAUTHENTICATED` ou `TOKEN_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: '`FORBIDDEN` (exige papel `admin`).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: '`EDUCATION_LEVEL_ALREADY_EXISTS`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - HTTPBearer: []
+  /api/v1/education-levels/{level_id}:
+    patch:
+      tags:
+      - Escolaridades
+      summary: Renomear escolaridade
+      description: 'PATCH parcial: campo ausente no corpo significa "não alterar".
+        Renomear preserva os vínculos com obras e professores (US16).'
+      operationId: update_education_level_api_v1_education_levels__level_id__patch
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: level_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Level Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EducationLevelUpdateRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EducationLevelResponse'
+        '422':
+          description: '`VALIDATION_ERROR`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`UNAUTHENTICATED` ou `TOKEN_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: '`FORBIDDEN` (exige papel `admin`).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: '`EDUCATION_LEVEL_ALREADY_EXISTS`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: '`NOT_FOUND`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/books:
+    get:
+      tags:
+      - Obras
+      summary: Buscar obras
+      description: 'Catálogo completo com busca por título/autor (`q`, ignorando acentos
+        e caixa — US07) e filtros por tema e escolaridade (US08). A lista volta integralmente
+        — sem paginação — e cada item já traz `is_saved`, o flag da Minha Seleção
+        do usuário logado. `sort` aceita `relevance` (padrão: obras dos temas/escolaridades
+        do professor primeiro, US11), `title` e `year`.'
+      operationId: list_books_api_v1_books_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: Q
+      - name: theme_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            exclusiveMinimum: 0
+          - type: 'null'
+          title: Theme Id
+      - name: education_level_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            exclusiveMinimum: 0
+          - type: 'null'
+          title: Education Level Id
+      - name: sort
+        in: query
+        required: false
+        schema:
+          enum:
+          - relevance
+          - title
+          - year
+          type: string
+          default: relevance
+          title: Sort
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BookSummary'
+                title: Response List Books Api V1 Books Get
+        '422':
+          description: '`VALIDATION_ERROR`; campos inválidos em `details`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`UNAUTHENTICATED` ou `TOKEN_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+      - Obras
+      summary: Cadastrar obra
+      description: 'Cria a obra (US15/US17). O corpo é `multipart/form-data`: campos
+        de texto, `theme_ids` repetido (`theme_ids=6&theme_ids=8`) e a capa opcional
+        no campo `cover` (PNG/JPEG, até 5 MB — `422 IMAGE_INVALID` ou `IMAGE_TOO_LARGE`).
+        ISBN duplicado responde `409 ISBN_ALREADY_REGISTERED`; ids de tema/escolaridade
+        inexistentes, `422` com o campo apontado em `details`.'
+      operationId: create_book_api_v1_books_post
+      security:
+      - HTTPBearer: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BookCreateForm'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookDetail'
+        '422':
+          description: '`VALIDATION_ERROR`, `IMAGE_INVALID` ou `IMAGE_TOO_LARGE`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`UNAUTHENTICATED` ou `TOKEN_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: '`FORBIDDEN` (exige papel `admin`).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: '`ISBN_ALREADY_REGISTERED`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/books/{book_id}:
+    get:
+      tags:
+      - Obras
+      summary: Detalhe da obra
+      description: Todos os dados da tela de detalhe (US09), incluindo os links externos
+        (`store_url`, `book_url`, `pedagogical_material_url`) e `is_saved`.
+      operationId: get_book_api_v1_books__book_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: book_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Book Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookDetail'
+        '422':
+          description: '`VALIDATION_ERROR`; campos inválidos em `details`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`UNAUTHENTICATED` ou `TOKEN_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: '`NOT_FOUND`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags:
+      - Obras
+      summary: Editar obra
+      description: 'Edição parcial (US15/US17), também em `multipart/form-data`. Regras
+        do PATCH multipart: campo **ausente** = não alterar; campo de texto ou numérico
+        enviado **vazio** (`campo=`) = limpar; `theme_ids=` (vazio) remove todos os
+        temas; `cover` ausente mantém a capa, arquivo novo a substitui. As alterações
+        refletem imediatamente na busca.'
+      operationId: update_book_api_v1_books__book_id__patch
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: book_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Book Id
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BookUpdateForm'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookDetail'
+        '422':
+          description: '`VALIDATION_ERROR`, `IMAGE_INVALID` ou `IMAGE_TOO_LARGE`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`UNAUTHENTICATED` ou `TOKEN_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: '`FORBIDDEN` (exige papel `admin`).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: '`ISBN_ALREADY_REGISTERED`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: '`NOT_FOUND`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/me:
+    patch:
+      tags:
+      - Perfil
+      summary: Editar perfil
+      description: 'Atualiza `full_name` e `school` (US10). PATCH parcial: campo ausente
+        não altera; `school` vazia limpa o valor. O e-mail é a identidade da conta
+        e não pode ser alterado por aqui.'
+      operationId: update_profile_api_v1_me_patch
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdateRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '422':
+          description: '`VALIDATION_ERROR`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`UNAUTHENTICATED` ou `TOKEN_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - HTTPBearer: []
+  /api/v1/me/password:
+    put:
+      tags:
+      - Perfil
+      summary: Trocar senha
+      description: Troca a senha exigindo a senha atual. `400 CURRENT_PASSWORD_INVALID`
+        se a senha atual não confere; `422 WEAK_PASSWORD` se a nova não atende às
+        regras. Em caso de sucesso, **todas as sessões são encerradas** — o access
+        token atual segue válido até expirar, mas o próximo refresh leva o app de
+        volta ao login.
+      operationId: change_password_api_v1_me_password_put
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordChangeRequest'
+        required: true
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: '`VALIDATION_ERROR` ou `WEAK_PASSWORD`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`UNAUTHENTICATED` ou `TOKEN_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: '`CURRENT_PASSWORD_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - HTTPBearer: []
+  /api/v1/me/interests:
+    put:
+      tags:
+      - Perfil
+      summary: Definir temas e escolaridades lecionadas
+      description: 'Substituição integral dos vínculos do professor (US11): o corpo
+        é o conjunto completo — `[]` limpa. Esses vínculos alimentam a ordenação por
+        relevância da busca (`GET /books`). Ids inexistentes respondem `422` com a
+        lista em `details`.'
+      operationId: update_interests_api_v1_me_interests_put
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InterestsUpdateRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InterestsResponse'
+        '422':
+          description: '`VALIDATION_ERROR` (ids inexistentes em `details`).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`UNAUTHENTICATED` ou `TOKEN_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - HTTPBearer: []
+  /api/v1/me/saved-books:
+    get:
+      tags:
+      - Perfil
+      summary: Listar Minha Seleção
+      description: Obras salvas pelo usuário, da mais recente à mais antiga, no mesmo
+        formato dos itens de `GET /books`. Lista integral, sem paginação.
+      operationId: list_saved_books_api_v1_me_saved_books_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/BookSummary'
+                type: array
+                title: Response List Saved Books Api V1 Me Saved Books Get
+        '422':
+          description: '`VALIDATION_ERROR`; campos inválidos em `details`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`UNAUTHENTICATED` ou `TOKEN_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - HTTPBearer: []
+  /api/v1/me/saved-books/{book_id}:
+    put:
+      tags:
+      - Perfil
+      summary: Salvar obra na seleção
+      description: 'Salva a obra na Minha Seleção. Idempotente: salvar uma obra já
+        salva também responde `204` (seguro repetir após falha de rede).'
+      operationId: save_book_api_v1_me_saved_books__book_id__put
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: book_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Book Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: '`VALIDATION_ERROR`; campos inválidos em `details`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`UNAUTHENTICATED` ou `TOKEN_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: '`NOT_FOUND`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+      - Perfil
+      summary: Remover obra da seleção
+      description: 'Remove a obra da Minha Seleção. Idempotente: remover uma obra
+        que já não está salva também responde `204`. `404` só quando a obra não existe.'
+      operationId: unsave_book_api_v1_me_saved_books__book_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: book_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Book Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: '`VALIDATION_ERROR`; campos inválidos em `details`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`UNAUTHENTICATED` ou `TOKEN_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: '`NOT_FOUND`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    AdminOverviewResponse:
+      properties:
+        books_count:
+          type: integer
+          title: Books Count
+          examples:
+          - 58
+        teachers_count:
+          type: integer
+          title: Teachers Count
+          examples:
+          - 23
+        pending_invites_count:
+          type: integer
+          title: Pending Invites Count
+          description: Professores com convite ainda não aceito.
+          examples:
+          - 4
+      type: object
+      required:
+      - books_count
+      - teachers_count
+      - pending_invites_count
+      title: AdminOverviewResponse
+      description: Contadores do painel do admin (US13) em uma única chamada.
+    BookCreateForm:
+      properties:
+        synopsis:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Synopsis
+        isbn:
+          anyOf:
+          - type: string
+            maxLength: 20
+          - type: 'null'
+          title: Isbn
+        page_count:
+          anyOf:
+          - type: integer
+            exclusiveMinimum: 0.0
+          - type: 'null'
+          title: Page Count
+          examples:
+          - 38
+        edition:
+          anyOf:
+          - type: string
+            maxLength: 50
+          - type: 'null'
+          title: Edition
+          examples:
+          - 1ª
+        year:
+          anyOf:
+          - type: integer
+            maximum: 9999.0
+            minimum: 1000.0
+          - type: 'null'
+          title: Year
+          examples:
+          - 2026
+        store_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Store Url
+        book_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Book Url
+        pedagogical_material_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Pedagogical Material Url
+        education_level_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Education Level Id
+        cover:
+          anyOf:
+          - type: string
+            format: binary
+          - type: 'null'
+          title: Cover
+        title:
+          type: string
+          maxLength: 255
+          minLength: 1
+          title: Title
+          examples:
+          - O Segredo de Aurora
+        author:
+          type: string
+          maxLength: 255
+          minLength: 1
+          title: Author
+          examples:
+          - Andréa Avelar
+        theme_ids:
+          items:
+            type: integer
+          type: array
+          title: Theme Ids
+          examples:
+          - 6
+          - 8
+      type: object
+      required:
+      - title
+      - author
+      title: BookCreateForm
+      description: Form de `POST /books` (US15/17). Título e autor são obrigatórios.
+    BookDetail:
+      properties:
+        id:
+          type: integer
+          title: Id
+          examples:
+          - 7
+        title:
+          type: string
+          title: Title
+          examples:
+          - O Segredo de Aurora
+        author:
+          type: string
+          title: Author
+          examples:
+          - Andréa Avelar
+        cover_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Cover Url
+          examples:
+          - /media/covers/3fa9f1.png
+        year:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Year
+          examples:
+          - 2026
+        education_level:
+          anyOf:
+          - $ref: '#/components/schemas/EducationLevelSummary'
+          - type: 'null'
+        themes:
+          items:
+            $ref: '#/components/schemas/ThemeSummary'
+          type: array
+          title: Themes
+        is_saved:
+          type: boolean
+          title: Is Saved
+          default: false
+        synopsis:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Synopsis
+          examples:
+          - Aurora ama dançar balé...
+        isbn:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Isbn
+          examples:
+          - 978-65-6079-046-9
+        page_count:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Page Count
+          examples:
+          - 38
+        edition:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Edition
+          examples:
+          - 1ª
+        store_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Store Url
+          examples:
+          - https://www.collibooksloja.com/infantil/o-segredo-de-aurora
+        book_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Book Url
+          examples:
+          - https://www.collibooks.com/o-segredo-de-aurora-lp/
+        pedagogical_material_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Pedagogical Material Url
+          examples:
+          - https://www.collibooks.com/wp-content/uploads/ficha.pdf
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+          examples:
+          - '2026-10-20T09:30:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+          examples:
+          - '2026-10-25T14:15:00Z'
+      type: object
+      required:
+      - id
+      - title
+      - author
+      - themes
+      - created_at
+      - updated_at
+      title: BookDetail
+      description: Obra completa — resposta do detalhe (US09) e do cadastro/edição
+        (US15).
+    BookSummary:
+      properties:
+        id:
+          type: integer
+          title: Id
+          examples:
+          - 7
+        title:
+          type: string
+          title: Title
+          examples:
+          - O Segredo de Aurora
+        author:
+          type: string
+          title: Author
+          examples:
+          - Andréa Avelar
+        cover_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Cover Url
+          examples:
+          - /media/covers/3fa9f1.png
+        year:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Year
+          examples:
+          - 2026
+        education_level:
+          anyOf:
+          - $ref: '#/components/schemas/EducationLevelSummary'
+          - type: 'null'
+        themes:
+          items:
+            $ref: '#/components/schemas/ThemeSummary'
+          type: array
+          title: Themes
+        is_saved:
+          type: boolean
+          title: Is Saved
+          default: false
+      type: object
+      required:
+      - id
+      - title
+      - author
+      - themes
+      title: BookSummary
+      description: Obra no formato do cartão do catálogo — também é o item da Minha
+        Seleção.
+    BookUpdateForm:
+      properties:
+        synopsis:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Synopsis
+        isbn:
+          anyOf:
+          - type: string
+            maxLength: 20
+          - type: 'null'
+          title: Isbn
+        page_count:
+          anyOf:
+          - type: integer
+            exclusiveMinimum: 0.0
+          - type: 'null'
+          title: Page Count
+          examples:
+          - 38
+        edition:
+          anyOf:
+          - type: string
+            maxLength: 50
+          - type: 'null'
+          title: Edition
+          examples:
+          - 1ª
+        year:
+          anyOf:
+          - type: integer
+            maximum: 9999.0
+            minimum: 1000.0
+          - type: 'null'
+          title: Year
+          examples:
+          - 2026
+        store_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Store Url
+        book_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Book Url
+        pedagogical_material_url:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Pedagogical Material Url
+        education_level_id:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Education Level Id
+        cover:
+          anyOf:
+          - type: string
+            format: binary
+          - type: 'null'
+          title: Cover
+        title:
+          anyOf:
+          - type: string
+            maxLength: 255
+            minLength: 1
+          - type: 'null'
+          title: Title
+        author:
+          anyOf:
+          - type: string
+            maxLength: 255
+            minLength: 1
+          - type: 'null'
+          title: Author
+        theme_ids:
+          anyOf:
+          - items:
+              type: integer
+            type: array
+          - type: 'null'
+          title: Theme Ids
+      type: object
+      title: BookUpdateForm
+      description: Form de `PATCH /books/{id}`. Tudo opcional; ver convenção no topo
+        do módulo.
+    EducationLevelCreateRequest:
+      properties:
+        name:
+          type: string
+          maxLength: 120
+          minLength: 1
+          title: Name
+          examples:
+          - Ensino Médio
+        sort_order:
+          type: integer
+          title: Sort Order
+          description: Ordem pedagógica na exibição (Infantil → Médio).
+          default: 0
+          examples:
+          - 4
+      type: object
+      required:
+      - name
+      title: EducationLevelCreateRequest
+    EducationLevelResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+          examples:
+          - 1
+        name:
+          type: string
+          title: Name
+          examples:
+          - Educação Infantil
+        sort_order:
+          type: integer
+          title: Sort Order
+          examples:
+          - 1
+      type: object
+      required:
+      - id
+      - name
+      - sort_order
+      title: EducationLevelResponse
+      description: Escolaridade na listagem/edição — `sort_order` expõe a ordem pedagógica.
+    EducationLevelSummary:
+      properties:
+        id:
+          type: integer
+          title: Id
+          examples:
+          - 1
+        name:
+          type: string
+          title: Name
+          examples:
+          - Educação Infantil
+      type: object
+      required:
+      - id
+      - name
+      title: EducationLevelSummary
+      description: Escolaridade no formato mínimo, reutilizada nas respostas de obras
+        e perfil.
+    EducationLevelUpdateRequest:
+      properties:
+        name:
+          anyOf:
+          - type: string
+            maxLength: 120
+            minLength: 1
+          - type: 'null'
+          title: Name
+          examples:
+          - Ensino Médio
+        sort_order:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Sort Order
+          examples:
+          - 4
+      type: object
+      title: EducationLevelUpdateRequest
+    ErrorResponse:
+      properties:
+        code:
+          type: string
+          title: Code
+          description: Código estável, usado pelo app.
+          examples:
+          - FORBIDDEN
+        message:
+          type: string
+          title: Message
+          examples:
+          - Acesso restrito a administradores.
+        details:
+          title: Details
+          description: Informação extra; em 422, a lista de campos inválidos.
+      type: object
+      required:
+      - code
+      - message
+      title: ErrorResponse
+      description: Formato de todas as respostas de erro (ver `app/errors.py`).
+    ForgotPasswordRequest:
+      properties:
+        email:
+          type: string
+          format: email
+          title: Email
+          examples:
+          - professor@escola.com
+      type: object
+      required:
+      - email
+      title: ForgotPasswordRequest
+    HealthResponse:
+      properties:
+        status:
+          type: string
+          title: Status
+          description: '`ok` ou `error`.'
+          examples:
+          - ok
+        database:
+          type: string
+          title: Database
+          description: '`connected` quando o banco responde; caso contrário, o erro.'
+          examples:
+          - connected
+      type: object
+      required:
+      - status
+      - database
+      title: HealthResponse
+    HelloResponse:
+      properties:
+        message:
+          type: string
+          title: Message
+          examples:
+          - Hello World
+      type: object
+      required:
+      - message
+      title: HelloResponse
+    InterestsResponse:
+      properties:
+        themes:
+          items:
+            $ref: '#/components/schemas/ThemeSummary'
+          type: array
+          title: Themes
+        education_levels:
+          items:
+            $ref: '#/components/schemas/EducationLevelSummary'
+          type: array
+          title: Education Levels
+      type: object
+      required:
+      - themes
+      - education_levels
+      title: InterestsResponse
+    InterestsUpdateRequest:
+      properties:
+        theme_ids:
+          items:
+            type: integer
+          type: array
+          title: Theme Ids
+          examples:
+          - - 6
+            - 8
+        education_level_ids:
+          items:
+            type: integer
+          type: array
+          title: Education Level Ids
+          examples:
+          - - 2
+      type: object
+      title: InterestsUpdateRequest
+      description: 'Temas e escolaridades que o professor leciona (US11).
+
+
+        Substituição integral e idempotente: o que está no corpo passa a ser o
+
+        conjunto completo — `[]` limpa os vínculos daquele tipo.'
+    InviteAcceptRequest:
+      properties:
+        token:
+          type: string
+          minLength: 1
+          title: Token
+          description: Token do link ou código colado no app.
+        full_name:
+          type: string
+          maxLength: 255
+          minLength: 1
+          title: Full Name
+          examples:
+          - Maria Souza
+        school:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: School
+          description: Opcional; pode ser preenchida depois.
+          examples:
+          - E.E. Machado de Assis
+        password:
+          type: string
+          title: Password
+          examples:
+          - senha-segura-123
+      type: object
+      required:
+      - token
+      - full_name
+      - password
+      title: InviteAcceptRequest
+      description: 'Dados que faltam no cadastro: a editora só informou o e-mail.'
+    InviteTokenRequest:
+      properties:
+        token:
+          type: string
+          minLength: 1
+          title: Token
+          description: Token do link ou código colado no app.
+      type: object
+      required:
+      - token
+      title: InviteTokenRequest
+    InviteVerifyResponse:
+      properties:
+        email:
+          type: string
+          title: Email
+          examples:
+          - professor@escola.com
+      type: object
+      required:
+      - email
+      title: InviteVerifyResponse
+    LoginRequest:
+      properties:
+        email:
+          type: string
+          format: email
+          title: Email
+          examples:
+          - professor@escola.com
+        password:
+          type: string
+          minLength: 1
+          title: Password
+          examples:
+          - senha-segura-123
+      type: object
+      required:
+      - email
+      - password
+      title: LoginRequest
+    MessageResponse:
+      properties:
+        message:
+          type: string
+          title: Message
+      type: object
+      required:
+      - message
+      title: MessageResponse
+    PasswordChangeRequest:
+      properties:
+        current_password:
+          type: string
+          minLength: 1
+          title: Current Password
+        new_password:
+          type: string
+          title: New Password
+          examples:
+          - nova-senha-segura
+      type: object
+      required:
+      - current_password
+      - new_password
+      title: PasswordChangeRequest
+      description: 'Troca de senha autenticada: exige a senha atual para que um aparelho
+
+        desatento não sirva para trocar a senha.'
+    ProfileUpdateRequest:
+      properties:
+        full_name:
+          anyOf:
+          - type: string
+            maxLength: 255
+            minLength: 1
+          - type: 'null'
+          title: Full Name
+          examples:
+          - Maria Souza
+        school:
+          anyOf:
+          - type: string
+            maxLength: 255
+          - type: 'null'
+          title: School
+          examples:
+          - E.E. Machado de Assis
+      type: object
+      title: ProfileUpdateRequest
+      description: 'PATCH parcial: campo ausente = não alterar; `school` vazia vira
+        `null`.
+
+
+        O e-mail não aparece aqui de propósito: é a identidade da conta (US10 o
+
+        marca como somente leitura).'
+    RefreshTokenRequest:
+      properties:
+        refresh_token:
+          type: string
+          minLength: 1
+          title: Refresh Token
+      type: object
+      required:
+      - refresh_token
+      title: RefreshTokenRequest
+    ResetPasswordRequest:
+      properties:
+        token:
+          type: string
+          minLength: 1
+          title: Token
+          description: Token do link ou código colado no app.
+        new_password:
+          type: string
+          title: New Password
+          examples:
+          - minha-senha-nova
+      type: object
+      required:
+      - token
+      - new_password
+      title: ResetPasswordRequest
+    TeacherCreateRequest:
+      properties:
+        email:
+          type: string
+          format: email
+          title: Email
+          examples:
+          - professor@escola.com
+      type: object
+      required:
+      - email
+      title: TeacherCreateRequest
+    TeacherInviteResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+          examples:
+          - 42
+        email:
+          type: string
+          title: Email
+          examples:
+          - professor@escola.com
+        status:
+          $ref: '#/components/schemas/UserStatus'
+          examples:
+          - invite_pending
+        invite_link:
+          type: string
+          title: Invite Link
+          examples:
+          - collibooks://convite?token=...
+        invite_code:
+          type: string
+          title: Invite Code
+          examples:
+          - b7f2c1d4e9a3...
+        invite_expires_at:
+          type: string
+          format: date-time
+          title: Invite Expires At
+          examples:
+          - '2026-10-30T12:00:00Z'
+      type: object
+      required:
+      - id
+      - email
+      - status
+      - invite_link
+      - invite_code
+      - invite_expires_at
+      title: TeacherInviteResponse
+      description: 'Professor com o convite recém-gerado.
+
+
+        O convite já foi enviado para o e-mail do professor. O link também volta aqui
+
+        para a editora reenviar por outro canal (WhatsApp) se o e-mail não chegar.
+
+        Como nem todo app deixa clicável um link `collibooks://`, o `invite_code`
+
+        (o mesmo token) pode ser colado na tela "Tenho um convite".'
+    ThemeCreateRequest:
+      properties:
+        name:
+          type: string
+          maxLength: 120
+          minLength: 1
+          title: Name
+          examples:
+          - Empatia
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+          examples:
+          - Obras que trabalham empatia e respeito
+      type: object
+      required:
+      - name
+      title: ThemeCreateRequest
+    ThemeResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+          examples:
+          - 6
+        name:
+          type: string
+          title: Name
+          examples:
+          - Inclusão
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+          examples:
+          - Obras sobre inclusão e acessibilidade
+      type: object
+      required:
+      - id
+      - name
+      title: ThemeResponse
+    ThemeSummary:
+      properties:
+        id:
+          type: integer
+          title: Id
+          examples:
+          - 6
+        name:
+          type: string
+          title: Name
+          examples:
+          - Inclusão
+      type: object
+      required:
+      - id
+      - name
+      title: ThemeSummary
+      description: Tema no formato mínimo, reutilizado nas respostas de obras e perfil.
+    ThemeUpdateRequest:
+      properties:
+        name:
+          anyOf:
+          - type: string
+            maxLength: 120
+            minLength: 1
+          - type: 'null'
+          title: Name
+          examples:
+          - Empatia
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+          examples:
+          - Obras que trabalham empatia
+      type: object
+      title: ThemeUpdateRequest
+      description: 'PATCH parcial: campo ausente ou vazio = não alterar (não há "limpar"
+        campo a campo).'
+    TokenResponse:
+      properties:
+        access_token:
+          type: string
+          title: Access Token
+          description: 'JWT curto, enviado em `Authorization: Bearer`.'
+        refresh_token:
+          type: string
+          title: Refresh Token
+          description: Token opaco e longo. Guardar no armazenamento seguro do aparelho
+            e usar em `/auth/refresh`. Cada uso devolve um novo; o anterior deixa
+            de valer.
+        token_type:
+          type: string
+          title: Token Type
+          default: bearer
+          examples:
+          - bearer
+        expires_in:
+          type: integer
+          title: Expires In
+          description: Validade do access token, em segundos.
+          examples:
+          - 900
+        user:
+          $ref: '#/components/schemas/UserResponse'
+      type: object
+      required:
+      - access_token
+      - refresh_token
+      - expires_in
+      - user
+      title: TokenResponse
+    UserResponse:
+      properties:
+        id:
+          type: integer
+          title: Id
+          examples:
+          - 1
+        email:
+          type: string
+          title: Email
+          examples:
+          - professor@escola.com
+        full_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Full Name
+          examples:
+          - Maria Souza
+        school:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: School
+          examples:
+          - E.E. Machado de Assis
+        role:
+          $ref: '#/components/schemas/UserRole'
+          examples:
+          - teacher
+        status:
+          $ref: '#/components/schemas/UserStatus'
+          examples:
+          - active
+      type: object
+      required:
+      - id
+      - email
+      - role
+      - status
+      title: UserResponse
+      description: Dados do usuário logado. O app usa `role` para mostrar (ou não)
+        a área administrativa.
+    UserRole:
+      type: string
+      enum:
+      - admin
+      - teacher
+      title: UserRole
+      description: 'Perfis do sistema. Não há auto-cadastro: quem entra é criado pela
+        editora.'
+    UserStatus:
+      type: string
+      enum:
+      - invite_pending
+      - active
+      - inactive
+      title: UserStatus
+      description: 'Estado da conta.
+
+
+        `INVITE_PENDING` é o estado inicial da US01 — a conta existe, mas ainda não
+
+        tem senha e por isso o login é bloqueado.'
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      description: Access token obtido em `/api/v1/auth/login`.
+      scheme: bearer
+tags:
+- name: Root
+  description: Endpoint raiz da aplicação.
+- name: Health
+  description: Verificação de saúde da API e da conexão com o banco de dados.
+- name: Auth
+  description: Login, renovação de sessão, logout e dados do usuário logado.
+- name: Convites
+  description: Primeiro acesso do professor a partir do link de convite.
+- name: Admin
+  description: Rotas exclusivas da editora (papel `admin`).
+- name: Obras
+  description: 'Catálogo de obras: busca e detalhe para todos; cadastro e edição só
+    da editora.'
+- name: Temas
+  description: 'Temas do acervo: listagem aberta a logados; criação e renomeação só
+    da editora.'
+- name: Escolaridades
+  description: 'Escolaridades do acervo: listagem aberta a logados; criação e renomeação
+    só da editora.'
+- name: Perfil
+  description: Dados do próprio usuário, temas/escolaridades que leciona e Minha Seleção.

@@ -12,7 +12,7 @@ from app.services import auth as auth_service
 from app.services import invites as invites_service
 from app.services.email import EmailSender, get_email_sender
 from app.views.auth import TokenResponse
-from app.views.errors import ErrorResponse
+from app.views.errors import RATE_LIMITED_RESPONSE, ErrorResponse
 from app.views.invites import (
     InviteAcceptRequest,
     InviteTokenRequest,
@@ -36,7 +36,7 @@ _INVITE_ERRORS = {
         "Confere o convite sem consumi-lo e devolve o e-mail, para a tela de completar o cadastro."
     ),
     response_model=InviteVerifyResponse,
-    responses=_INVITE_ERRORS,
+    responses={**_INVITE_ERRORS, **RATE_LIMITED_RESPONSE},
 )
 @limiter.limit("20/minute")
 def verify(request: Request, body: InviteTokenRequest, db: DbSession) -> InviteVerifyResponse:
@@ -55,7 +55,11 @@ def verify(request: Request, body: InviteTokenRequest, db: DbSession) -> InviteV
     response_model=TokenResponse,
     responses={
         **_INVITE_ERRORS,
-        status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": ErrorResponse},
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {
+            "model": ErrorResponse,
+            "description": "`VALIDATION_ERROR` ou `WEAK_PASSWORD`.",
+        },
+        **RATE_LIMITED_RESPONSE,
     },
 )
 @limiter.limit("10/minute")
@@ -75,6 +79,7 @@ def accept(request: Request, body: InviteAcceptRequest, db: DbSession) -> TokenR
     ),
     status_code=status.HTTP_202_ACCEPTED,
     response_model=MessageResponse,
+    responses=RATE_LIMITED_RESPONSE,
 )
 @limiter.limit("5/minute")
 def resend(

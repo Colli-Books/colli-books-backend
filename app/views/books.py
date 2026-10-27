@@ -103,8 +103,8 @@ class BookDetail(BookSummary):
     pedagogical_material_url: str | None = Field(
         None, examples=["https://www.collibooks.com/wp-content/uploads/ficha.pdf"]
     )
-    created_at: datetime
-    updated_at: datetime
+    created_at: datetime = Field(..., examples=["2026-10-20T09:30:00Z"])
+    updated_at: datetime = Field(..., examples=["2026-10-25T14:15:00Z"])
 
     @classmethod
     def from_book(cls, book: "Book", is_saved: bool) -> "BookDetail":

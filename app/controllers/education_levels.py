@@ -18,12 +18,26 @@ from app.views.errors import ErrorResponse
 
 router = APIRouter(prefix="/education-levels", tags=["Escolaridades"])
 
-_AUTH = {status.HTTP_401_UNAUTHORIZED: {"model": ErrorResponse}}
+_AUTH = {
+    status.HTTP_401_UNAUTHORIZED: {
+        "model": ErrorResponse,
+        "description": "`UNAUTHENTICATED` ou `TOKEN_INVALID`.",
+    }
+}
 _ADMIN_ERRORS = {
     **_AUTH,
-    status.HTTP_403_FORBIDDEN: {"model": ErrorResponse},
-    status.HTTP_409_CONFLICT: {"model": ErrorResponse},
-    status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": ErrorResponse},
+    status.HTTP_403_FORBIDDEN: {
+        "model": ErrorResponse,
+        "description": "`FORBIDDEN` (exige papel `admin`).",
+    },
+    status.HTTP_409_CONFLICT: {
+        "model": ErrorResponse,
+        "description": "`EDUCATION_LEVEL_ALREADY_EXISTS`.",
+    },
+    status.HTTP_422_UNPROCESSABLE_ENTITY: {
+        "model": ErrorResponse,
+        "description": "`VALIDATION_ERROR`.",
+    },
 }
 
 
@@ -68,7 +82,10 @@ def create_education_level(
     response_model=EducationLevelResponse,
     responses={
         **_ADMIN_ERRORS,
-        status.HTTP_404_NOT_FOUND: {"model": ErrorResponse},
+        status.HTTP_404_NOT_FOUND: {
+            "model": ErrorResponse,
+            "description": "`NOT_FOUND`.",
+        },
     },
 )
 def update_education_level(

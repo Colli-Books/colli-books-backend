@@ -32,5 +32,5 @@ class TeacherInviteResponse(BaseModel):
     email: str = Field(..., examples=["professor@escola.com"])
     status: UserStatus = Field(..., examples=[UserStatus.INVITE_PENDING])
     invite_link: str = Field(..., examples=["collibooks://convite?token=..."])
-    invite_code: str
-    invite_expires_at: datetime
+    invite_code: str = Field(..., examples=["b7f2c1d4e9a3..."])
+    invite_expires_at: datetime = Field(..., examples=["2026-10-30T12:00:00Z"])

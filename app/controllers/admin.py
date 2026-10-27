@@ -20,8 +20,14 @@ from app.views.users import UserResponse
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
 _AUTH_ERRORS = {
-    status.HTTP_401_UNAUTHORIZED: {"model": ErrorResponse},
-    status.HTTP_403_FORBIDDEN: {"model": ErrorResponse},
+    status.HTTP_401_UNAUTHORIZED: {
+        "model": ErrorResponse,
+        "description": "`UNAUTHENTICATED` ou `TOKEN_INVALID`.",
+    },
+    status.HTTP_403_FORBIDDEN: {
+        "model": ErrorResponse,
+        "description": "`FORBIDDEN` (exige papel `admin`).",
+    },
 }
 
 
@@ -47,7 +53,13 @@ def _invite_response(user: User, invite: IssuedInvite) -> TeacherInviteResponse:
     ),
     status_code=status.HTTP_201_CREATED,
     response_model=TeacherInviteResponse,
-    responses={**_AUTH_ERRORS, status.HTTP_409_CONFLICT: {"model": ErrorResponse}},
+    responses={
+        **_AUTH_ERRORS,
+        status.HTTP_409_CONFLICT: {
+            "model": ErrorResponse,
+            "description": "`EMAIL_ALREADY_REGISTERED`.",
+        },
+    },
 )
 def create_teacher(
     body: TeacherCreateRequest,
@@ -67,8 +79,14 @@ def create_teacher(
     response_model=TeacherInviteResponse,
     responses={
         **_AUTH_ERRORS,
-        status.HTTP_404_NOT_FOUND: {"model": ErrorResponse},
-        status.HTTP_409_CONFLICT: {"model": ErrorResponse},
+        status.HTTP_404_NOT_FOUND: {
+            "model": ErrorResponse,
+            "description": "`NOT_FOUND` (professor não existe).",
+        },
+        status.HTTP_409_CONFLICT: {
+            "model": ErrorResponse,
+            "description": "`ACCOUNT_ALREADY_ACTIVE` (cadastro já completado).",
+        },
     },
 )
 def reissue_invite(
@@ -90,7 +108,13 @@ def reissue_invite(
         "base é pequena e o app monta os filtros sobre ela."
     ),
     response_model=list[UserResponse],
-    responses={**_AUTH_ERRORS, status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": ErrorResponse}},
+    responses={
+        **_AUTH_ERRORS,
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {
+            "model": ErrorResponse,
+            "description": "`VALIDATION_ERROR`.",
+        },
+    },
 )
 def list_teachers(
     db: DbSession,

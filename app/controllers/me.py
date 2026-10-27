@@ -21,7 +21,12 @@ from app.views.users import UserResponse
 
 router = APIRouter(prefix="/me", tags=["Perfil"])
 
-_AUTH = {status.HTTP_401_UNAUTHORIZED: {"model": ErrorResponse}}
+_AUTH = {
+    status.HTTP_401_UNAUTHORIZED: {
+        "model": ErrorResponse,
+        "description": "`UNAUTHENTICATED` ou `TOKEN_INVALID`.",
+    }
+}
 
 
 @router.patch(
@@ -33,7 +38,13 @@ _AUTH = {status.HTTP_401_UNAUTHORIZED: {"model": ErrorResponse}}
         "e não pode ser alterado por aqui."
     ),
     response_model=UserResponse,
-    responses={**_AUTH, status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": ErrorResponse}},
+    responses={
+        **_AUTH,
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {
+            "model": ErrorResponse,
+            "description": "`VALIDATION_ERROR`.",
+        },
+    },
 )
 def update_profile(body: ProfileUpdateRequest, user: CurrentUser, db: DbSession) -> UserResponse:
     return UserResponse.model_validate(profile_service.update_profile(db, user, body))
@@ -52,8 +63,14 @@ def update_profile(body: ProfileUpdateRequest, user: CurrentUser, db: DbSession)
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         **_AUTH,
-        status.HTTP_400_BAD_REQUEST: {"model": ErrorResponse},
-        status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": ErrorResponse},
+        status.HTTP_400_BAD_REQUEST: {
+            "model": ErrorResponse,
+            "description": "`CURRENT_PASSWORD_INVALID`.",
+        },
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {
+            "model": ErrorResponse,
+            "description": "`VALIDATION_ERROR` ou `WEAK_PASSWORD`.",
+        },
     },
 )
 def change_password(body: PasswordChangeRequest, user: CurrentUser, db: DbSession) -> Response:
@@ -71,7 +88,13 @@ def change_password(body: PasswordChangeRequest, user: CurrentUser, db: DbSessio
         "`422` com a lista em `details`."
     ),
     response_model=InterestsResponse,
-    responses={**_AUTH, status.HTTP_422_UNPROCESSABLE_ENTITY: {"model": ErrorResponse}},
+    responses={
+        **_AUTH,
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {
+            "model": ErrorResponse,
+            "description": "`VALIDATION_ERROR` (ids inexistentes em `details`).",
+        },
+    },
 )
 def update_interests(
     body: InterestsUpdateRequest, user: CurrentUser, db: DbSession
@@ -111,7 +134,13 @@ def list_saved_books(user: CurrentUser, db: DbSession) -> list[BookSummary]:
         "também responde `204` (seguro repetir após falha de rede)."
     ),
     status_code=status.HTTP_204_NO_CONTENT,
-    responses={**_AUTH, status.HTTP_404_NOT_FOUND: {"model": ErrorResponse}},
+    responses={
+        **_AUTH,
+        status.HTTP_404_NOT_FOUND: {
+            "model": ErrorResponse,
+            "description": "`NOT_FOUND`.",
+        },
+    },
 )
 def save_book(book_id: int, user: CurrentUser, db: DbSession) -> Response:
     profile_service.save_book(db, user, book_id)
@@ -126,7 +155,13 @@ def save_book(book_id: int, user: CurrentUser, db: DbSession) -> Response:
         "não está salva também responde `204`. `404` só quando a obra não existe."
     ),
     status_code=status.HTTP_204_NO_CONTENT,
-    responses={**_AUTH, status.HTTP_404_NOT_FOUND: {"model": ErrorResponse}},
+    responses={
+        **_AUTH,
+        status.HTTP_404_NOT_FOUND: {
+            "model": ErrorResponse,
+            "description": "`NOT_FOUND`.",
+        },
+    },
 )
 def unsave_book(book_id: int, user: CurrentUser, db: DbSession) -> Response:
     profile_service.unsave_book(db, user, book_id)

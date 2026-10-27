@@ -129,9 +129,29 @@ A documentação é gerada automaticamente pelo FastAPI a partir do código, seg
 padrão [OpenAPI 3.1](https://www.openapis.org/). Não é preciso escrever nem manter
 nada à mão: ao adicionar um endpoint, ele aparece na página sozinho.
 
-Com os containers no ar, acesse **http://localhost:8000/docs** (Swagger UI). A página
-lista todos os endpoints agrupados por tag e permite **executar** as requisições direto
-do navegador, pelo botão *Try it out*.
+Com os containers no ar, acesse **http://localhost:8000/docs** — o Swagger UI
+oficial (SmartBear), servido pelo próprio backend: os assets (`app/static/swagger-ui/`)
+são locais, então a página funciona sem internet e sem depender de CDN. Ela lista
+todos os endpoints agrupados por tag, mostra parâmetros e modelos (Schemas) e
+permite **executar** as requisições direto do navegador, pelo botão *Try it out* —
+as chamadas batem no banco de verdade.
+
+**Rotas autenticadas:** rode `POST /api/v1/auth/login`, copie o `access_token` da
+resposta, clique em **Authorize** (cadeado no topo) e cole o token — a partir daí as
+rotas protegidas e de admin funcionam no *Try it out*. O token persiste após
+atualizar a página. As requisições vão sempre para a origem onde a página está
+sendo servida — ou seja, cada ambiente testa a si mesmo.
+
+### Spec versionada
+
+O contrato também é exportado em `openapi.yaml`, na raiz do repositório — serve
+para gerar o cliente do app (`openapi_generator`, seção 10.4 do contrato) e para
+comparar mudanças de API entre versões. Para regenerar depois de alterar rotas:
+
+```bash
+python -m app.cli export-openapi            # grava ./openapi.yaml
+python -m app.cli export-openapi --output api.json   # ou JSON pelo sufixo
+```
 
 ### Endpoints
 
@@ -140,14 +160,14 @@ do navegador, pelo botão *Try it out*.
 | `GET`  | `/`       | Root   | Hello world; confirma que a API está no ar | `200`      |
 | `GET`  | `/health` | Health | Executa `SELECT 1` no PostgreSQL           | `200`, `503` |
 | `POST` | `/api/v1/auth/login` | Auth | Login com e-mail e senha (US03) | `200`, `401`, `429` |
-| `POST` | `/api/v1/auth/refresh` | Auth | Troca o refresh token por um par novo (rotação) | `200`, `401` |
+| `POST` | `/api/v1/auth/refresh` | Auth | Troca o refresh token por um par novo (rotação) | `200`, `401`, `429` |
 | `POST` | `/api/v1/auth/logout` | Auth | Revoga o refresh token | `204` |
 | `GET`  | `/api/v1/auth/me` | Auth | Dados e papel do usuário logado (US05) | `200`, `401` |
 | `POST` | `/api/v1/auth/forgot-password` | Auth | Envia link de redefinição de senha (US04, US06) | `202`, `429` |
-| `POST` | `/api/v1/auth/reset-password` | Auth | Troca a senha e encerra as sessões (US04, US06) | `204`, `400`, `422` |
-| `POST` | `/api/v1/invites/verify` | Convites | Confere o convite e devolve o e-mail (US02) | `200`, `404`, `409`, `410` |
-| `POST` | `/api/v1/invites/accept` | Convites | Completa o cadastro (nome, escola opcional, senha), ativa a conta e autentica (US02) | `200`, `404`, `409`, `410`, `422` |
-| `POST` | `/api/v1/invites/resend` | Convites | Reenvia convite expirado por e-mail (US02) | `202` |
+| `POST` | `/api/v1/auth/reset-password` | Auth | Troca a senha e encerra as sessões (US04, US06) | `204`, `400`, `422`, `429` |
+| `POST` | `/api/v1/invites/verify` | Convites | Confere o convite e devolve o e-mail (US02) | `200`, `404`, `409`, `410`, `429` |
+| `POST` | `/api/v1/invites/accept` | Convites | Completa o cadastro (nome, escola opcional, senha), ativa a conta e autentica (US02) | `200`, `404`, `409`, `410`, `422`, `429` |
+| `POST` | `/api/v1/invites/resend` | Convites | Reenvia convite expirado por e-mail (US02) | `202`, `429` |
 | `POST` | `/api/v1/admin/teachers` | Admin | Cadastra professor, manda o convite por e-mail e devolve o link (US01) | `201`, `401`, `403`, `409` |
 | `POST` | `/api/v1/admin/teachers/{id}/invite` | Admin | Gera novo convite, invalida o anterior e manda por e-mail | `200`, `401`, `403`, `404`, `409` |
 | `GET`  | `/api/v1/admin/teachers` | Admin | Lista professores, com filtro `status` e busca `q` | `200`, `401`, `403` |
@@ -204,10 +224,14 @@ docker compose start db
 
 Os metadados da página ficam em `app/main.py`:
 
-- `FastAPI(title=..., description=..., version=..., openapi_tags=...)` controla o
-  cabeçalho da página e a descrição de cada tag.
+- `FastAPI(title=..., description=..., version=..., openapi_tags=...)`
+  controla o cabeçalho e a descrição de cada tag.
 - Em cada rota, `tags`, `summary`, `description` e `response_model` definem como o
-  endpoint aparece na documentação.
+  endpoint aparece na documentação; `responses={status: {"model": ErrorResponse,
+  "description": "..."}}` documenta os erros com os códigos do contrato
+  (`app/errors.py`). O `422` já é declarado no `api_router` inteiro e os blocos
+  `VALIDATION_RESPONSE`/`RATE_LIMITED_RESPONSE` de `app/views/errors.py` são
+  reutilizáveis.
 - Os modelos Pydantic de `app/views/` viram os *schemas* exibidos
   no rodapé da página, com os exemplos definidos em `Field(..., examples=[...])`.
 

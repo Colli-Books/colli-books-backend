@@ -25,7 +25,9 @@ services:
       - path: .env
         required: false
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-colli_books}
+      # DATABASE_URL vem pronta do .env (escolha do banco: local ou Supabase).
+      # Sem ela, aponta para o postgres do próprio compose (serviço db).
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://postgres:postgres@db:5432/colli_books}
       MEDIA_DIR: /code/media
     ports:
       - "${BACKEND_PORT:-8000}:8000"

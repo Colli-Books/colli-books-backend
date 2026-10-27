@@ -1,5 +1,9 @@
+from pathlib import Path
+
 from fastapi import FastAPI
+from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.staticfiles import StaticFiles
+from starlette.responses import HTMLResponse
 
 from app.config import get_settings
 from app.controllers import api_router, health
@@ -9,13 +13,8 @@ from app.rate_limit import register_rate_limit
 DESCRIPTION = """
 API do projeto **Colli Books**.
 
-Esta documentação é gerada automaticamente a partir do código pelo padrão
-[OpenAPI](https://www.openapis.org/) e fica disponível em `/docs`, onde é possível
-executar as requisições direto do navegador.
-
 As rotas de negócio ficam sob `/api/v1`. Todo erro segue o formato
-`{"code": "...", "message": "...", "details": ...}`, em que `code` é estável e
-pode ser usado pelo app para decidir o que mostrar.
+`{"code": "...", "message": "...", "details": ...}`.
 """
 
 TAGS_METADATA = [
@@ -62,9 +61,9 @@ app = FastAPI(
     description=DESCRIPTION,
     version="0.1.0",
     openapi_tags=TAGS_METADATA,
-    contact={"name": "Colli Books", "email": "admin@colli.com"},
-    license_info={"name": "MIT"},
-    docs_url="/docs",
+    # /docs é servido pela rota custom abaixo, com os assets do swagger-ui
+    # hospedados no próprio backend (sem depender de CDN).
+    docs_url=None,
     redoc_url=None,
 )
 
@@ -72,6 +71,26 @@ register_error_handlers(app)
 register_rate_limit(app)
 app.include_router(health.router)
 app.include_router(api_router)
+
+_STATIC_DIR = Path(__file__).parent / "static"
+_SWAGGER_UI_DIR = "/static/swagger-ui"
+
+app.mount("/static", StaticFiles(directory=_STATIC_DIR), name="static")
+
+
+@app.get("/docs", include_in_schema=False)
+def swagger_ui() -> HTMLResponse:
+    """Swagger UI (SmartBear) com assets locais — funciona sem internet."""
+    return get_swagger_ui_html(
+        openapi_url=app.openapi_url,
+        title=f"{app.title} — Swagger UI",
+        swagger_js_url=f"{_SWAGGER_UI_DIR}/swagger-ui-bundle.js",
+        swagger_css_url=f"{_SWAGGER_UI_DIR}/swagger-ui.css",
+        swagger_favicon_url=f"{_SWAGGER_UI_DIR}/favicon-32x32.png",
+        # Mantém o Bearer do Authorize depois de dar refresh na página.
+        swagger_ui_parameters={"persistAuthorization": True},
+    )
+
 
 # Capas enviadas pelo admin; a pasta só é criada no primeiro upload
 # (`check_dir=False` permite importar o app sem que ela exista).

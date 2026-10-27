@@ -31,6 +31,11 @@ os.environ["APP_ENV"] = "test"
 os.environ["RATE_LIMIT_ENABLED"] = "false"
 # Nenhum teste conversa com o Brevo real, mesmo que o `.env` local tenha chave.
 os.environ["BREVO_API_KEY"] = ""
+# Idem para o JWT_SECRET do `.env` local (placeholder ou segredo real):
+# os testes de config assumem o segredo de desenvolvimento.
+from app.config import DEV_JWT_SECRET  # noqa: E402
+
+os.environ["JWT_SECRET"] = DEV_JWT_SECRET
 # Uploads de capa de teste não podem sujar a pasta media/ do projeto.
 os.environ["MEDIA_DIR"] = tempfile.mkdtemp(prefix="colli-test-media-")
 
