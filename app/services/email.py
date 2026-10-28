@@ -91,7 +91,6 @@ class BrevoEmailSender:
             raise RuntimeError(f"Template do Brevo não configurado para '{message.kind.value}'.")
         self._client.transactional_emails.send_transac_email(
             template_id=template_id,
-            # Nome opcional: no convite, o professor ainda não o cadastrou.
             to=[SendTransacEmailRequestToItem(email=message.to)],
             params=message.params,
         )

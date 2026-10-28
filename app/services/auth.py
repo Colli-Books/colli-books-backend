@@ -67,7 +67,6 @@ def start_session(db: Session, user: User) -> SessionTokens:
 
 def rotate_refresh_token(db: Session, raw_refresh: str) -> SessionTokens:
     """Troca um refresh token válido por uma sessão nova. Faz commit."""
-    # FOR UPDATE: duas renovações simultâneas com o mesmo token não podem ambas vencer.
     token = db.scalar(
         select(RefreshToken)
         .where(RefreshToken.token_hash == hash_token(raw_refresh))
@@ -77,7 +76,6 @@ def rotate_refresh_token(db: Session, raw_refresh: str) -> SessionTokens:
         raise _invalid_refresh()
 
     if token.revoked_at is not None:
-        # Reuso de token já rotacionado: trata como roubo e derruba todas as sessões.
         revoke_all_sessions(db, token.user_id)
         db.commit()
         raise _invalid_refresh()
@@ -113,7 +111,6 @@ def revoke_all_sessions(db: Session, user_id: int) -> None:
 
 
 def _invalid_refresh() -> AppError:
-    # Um único código para qualquer falha de refresh: o app volta para o login.
     return AppError(
         ErrorCode.TOKEN_INVALID,
         "Sessão inválida. Faça login novamente.",

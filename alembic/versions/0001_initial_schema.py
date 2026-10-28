@@ -26,10 +26,6 @@ user_status = sa.Enum("invite_pending", "active", "inactive", name="user_status"
 
 
 def upgrade() -> None:
-    # --- Extensões usadas pela busca da US07 -------------------------------
-    # A busca por nome ignora acentuação e caixa. `unaccent` não é IMMUTABLE
-    # (depende do dicionário carregado) e por isso não pode ser indexada
-    # diretamente; o wrapper abaixo é o contorno documentado pelo PostgreSQL.
     op.execute("CREATE EXTENSION IF NOT EXISTS unaccent")
     op.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm")
     op.execute(
@@ -42,7 +38,6 @@ def upgrade() -> None:
         """
     )
 
-    # --- Épico 1 — Acesso e Contas ----------------------------------------
     op.create_table(
         "users",
         sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),
@@ -137,7 +132,6 @@ def upgrade() -> None:
     )
     op.create_index("ix_refresh_tokens_user_id", "refresh_tokens", ["user_id"])
 
-    # --- Épico 3 — Acervo --------------------------------------------------
     op.create_table(
         "themes",
         sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),
@@ -151,7 +145,6 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_themes")),
     )
-    # US16: nomes duplicados são proibidos, ignorando maiúsculas/minúsculas.
     op.execute("CREATE UNIQUE INDEX uq_themes_name_lower ON themes (lower(name))")
 
     op.create_table(
@@ -202,7 +195,6 @@ def upgrade() -> None:
         sa.UniqueConstraint("isbn", name=op.f("uq_books_isbn")),
     )
     op.create_index("ix_books_education_level_id", "books", ["education_level_id"])
-    # US07: busca por trecho do título/autor, sem acento e sem distinguir caixa.
     op.execute(
         "CREATE INDEX ix_books_title_search ON books "
         "USING gin (immutable_unaccent(lower(title)) gin_trgm_ops)"
@@ -212,7 +204,6 @@ def upgrade() -> None:
         "USING gin (immutable_unaccent(lower(author)) gin_trgm_ops)"
     )
 
-    # --- Épico 4 — Conteúdo institucional ---------------------------------
     op.create_table(
         "institutional_pages",
         sa.Column("id", sa.BigInteger(), autoincrement=True, nullable=False),
@@ -236,7 +227,6 @@ def upgrade() -> None:
         sa.UniqueConstraint("slug", name=op.f("uq_institutional_pages_slug")),
     )
 
-    # --- Vínculos ----------------------------------------------------------
     op.create_table(
         "book_themes",
         sa.Column("book_id", sa.BigInteger(), nullable=False),

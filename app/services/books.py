@@ -70,8 +70,6 @@ def _sort_books(books: list[Book], user: User, sort: BookSort) -> list[Book]:
     if sort == "year":
         return sorted(books, key=lambda b: (b.year or 0, b.title.lower()), reverse=True)
 
-    # "relevance" (US11): primeiro as obras dos temas/escolaridades que o
-    # professor leciona, desempatando pelo título.
     theme_ids = {t.id for t in user.themes}
     level_ids = {lv.id for lv in user.education_levels}
     if not theme_ids and not level_ids:
@@ -107,9 +105,6 @@ def saved_book_ids(db: Session, user_id: int, book_ids: list[int]) -> set[int]:
     return set(rows)
 
 
-# --- Cadastro e edição (US15–US17, só admin) ---------------------------------
-
-
 def create_book(db: Session, form: BookCreateForm) -> Book:
     """Cadastra a obra; a capa, se enviada, já foi validada. Faz commit."""
     level_id, themes = _resolve_refs(db, form.education_level_id, form.theme_ids)
@@ -136,7 +131,6 @@ def create_book(db: Session, form: BookCreateForm) -> Book:
         db.add(book)
         db.commit()
     except IntegrityError as exc:
-        # Corrida: outra requisição cadastrou o mesmo ISBN entre a checagem e o commit.
         db.rollback()
         if cover_url:
             delete_cover(cover_url)
@@ -176,8 +170,6 @@ def update_book(db: Session, book_id: int, form: BookUpdateForm) -> Book:
         if field in sent:
             setattr(book, field, getattr(form, field))
 
-    # Referências são resolvidas juntas para que a `422` aponte todos os campos
-    # inválidos de uma vez (US15: "erro sinalizado por campo").
     wants_level = "education_level_id" in sent
     wants_themes = "theme_ids" in sent
     if wants_level or wants_themes:
@@ -197,8 +189,6 @@ def update_book(db: Session, book_id: int, form: BookUpdateForm) -> Book:
 
     old_cover = None
     if form.cover is not None:
-        # Grava o arquivo novo antes do commit: se a gravação falhar, a obra
-        # continua com a capa antiga.
         new_cover = save_cover(form.cover)
         old_cover, book.cover_url = book.cover_url, new_cover
     try:

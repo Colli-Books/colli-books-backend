@@ -3,7 +3,6 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-# Import com efeito colateral: registra todos os models em Base.metadata.
 import app.models  # noqa: F401
 from app.database import DATABASE_URL, Base
 
@@ -12,7 +11,6 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# A URL vem do ambiente (mesma variável que a aplicação usa), não do .ini.
 config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
 target_metadata = Base.metadata

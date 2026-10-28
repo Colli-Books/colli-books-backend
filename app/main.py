@@ -61,8 +61,6 @@ app = FastAPI(
     description=DESCRIPTION,
     version="0.1.0",
     openapi_tags=TAGS_METADATA,
-    # /docs é servido pela rota custom abaixo, com os assets do swagger-ui
-    # hospedados no próprio backend (sem depender de CDN).
     docs_url=None,
     redoc_url=None,
 )
@@ -87,13 +85,10 @@ def swagger_ui() -> HTMLResponse:
         swagger_js_url=f"{_SWAGGER_UI_DIR}/swagger-ui-bundle.js",
         swagger_css_url=f"{_SWAGGER_UI_DIR}/swagger-ui.css",
         swagger_favicon_url=f"{_SWAGGER_UI_DIR}/favicon-32x32.png",
-        # Mantém o Bearer do Authorize depois de dar refresh na página.
         swagger_ui_parameters={"persistAuthorization": True},
     )
 
 
-# Capas enviadas pelo admin; a pasta só é criada no primeiro upload
-# (`check_dir=False` permite importar o app sem que ela exista).
 app.mount(
     "/media",
     StaticFiles(directory=get_settings().media_dir, check_dir=False),

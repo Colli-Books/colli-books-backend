@@ -10,8 +10,6 @@ from typing import Literal
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Segredo usado só em desenvolvimento. Em produção a aplicação se recusa a subir
-# com ele (ver `_reject_insecure_secret_in_production`).
 DEV_JWT_SECRET = "dev-secret-change-me-dev-secret-change-me"
 
 
@@ -22,44 +20,27 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+psycopg://postgres:postgres@db:5432/colli_books"
 
-    # --- Tokens de sessão (US03) ------------------------------------------
     jwt_secret: str = DEV_JWT_SECRET
     jwt_algorithm: str = "HS256"
-    # Access token curto: o app mobile renova com o refresh token.
     access_token_ttl_minutes: int = 15
     refresh_token_ttl_days: int = 30
 
-    # --- Tokens de uso único (US01, US02, US04) ---------------------------
     invite_ttl_hours: int = 72
     password_reset_ttl_minutes: int = 30
 
-    # Base dos links abertos pelo app. Sem domínio, usamos esquema customizado;
-    # quando houver domínio, basta trocar para `https://...` (App/Universal Links).
     app_link_base_url: str = "collibooks://"
 
-    # --- Senhas (US02) ----------------------------------------------------
     password_min_length: int = 8
-    # Teto para evitar que uma senha gigante vire custo de CPU no hash.
     password_max_length: int = 128
 
-    # --- Upload de capas (US15) --------------------------------------------
-    # Pasta servida em /media. Relativa ao workdir do processo (`/code` no
-    # container, raiz do projeto no venv); em testes, aponta para um tmp.
     media_dir: str = "media"
     cover_max_bytes: int = 5 * 1024 * 1024
 
-    # --- E-mail transacional (Brevo) ----------------------------------------
-    # Chave da API (SMTP & Automation > SMTP & API no painel do Brevo). Vazia:
-    # os e-mails vão para o log (ConsoleEmailSender), como no desenvolvimento.
     brevo_api_key: str = ""
-    # IDs dos templates transacionais criados no painel do Brevo (0 = não
-    # configurado; o envio com Brevo falha com erro no log). Convite novo e
-    # renovado podem compartilhar o mesmo template: basta repetir o ID.
     brevo_template_invite: int = 0
     brevo_template_invite_renewal: int = 0
     brevo_template_password_reset: int = 0
 
-    # --- Proteção contra força bruta --------------------------------------
     rate_limit_enabled: bool = True
 
     @model_validator(mode="after")

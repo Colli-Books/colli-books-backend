@@ -50,12 +50,7 @@ class UserStatus(enum.StrEnum):
 class User(TimestampMixin, Base):
     __tablename__ = "users"
     __table_args__ = (
-        # O e-mail é a identidade do usuário e a chave do convite: guardamos
-        # sempre em minúsculas para que a UNIQUE acima seja, na prática,
-        # insensível a maiúsculas.
         CheckConstraint("email = lower(email)", name="ck_users_email_lowercase"),
-        # US01: "ENQUANTO a senha não for definida, o login é bloqueado."
-        # Uma conta ativa sem hash de senha seria exatamente esse furo.
         CheckConstraint(
             "status <> 'active' OR password_hash IS NOT NULL",
             name="ck_users_active_requires_password",
@@ -65,7 +60,6 @@ class User(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
-    # Nulo enquanto o convite não é aceito (US01/US02).
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[UserRole] = mapped_column(
         Enum(UserRole, name="user_role", values_callable=lambda e: [m.value for m in e]),
@@ -79,7 +73,6 @@ class User(TimestampMixin, Base):
         default=UserStatus.INVITE_PENDING,
         server_default=UserStatus.INVITE_PENDING.value,
     )
-    # US10: o professor completa nome e escola; a editora só informa o e-mail.
     full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     school: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
@@ -113,8 +106,6 @@ class _SingleUseToken(TimestampMixin):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     token_hash: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    # `used_at` preenchido distingue "já usado" de "expirado" — a US02 exige
-    # mensagens diferentes para os dois casos.
     used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 

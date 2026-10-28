@@ -4,7 +4,7 @@ from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
 from sqlalchemy.orm import Session
 
-import app.models  # noqa: F401  (registra todos os models no metadata)
+import app.models  # noqa: F401
 from app.database import Base
 
 

@@ -100,7 +100,6 @@ def accept_invite(
 
     Faz commit.
     """
-    # FOR UPDATE: o mesmo convite não pode ser aceito duas vezes em paralelo.
     invite = _check_usable(_find_invite(db, raw, lock=True))
     validate_password_strength(password)
 

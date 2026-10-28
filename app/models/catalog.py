@@ -30,12 +30,7 @@ class Theme(TimestampMixin, Base):
     """Tema cadastrado pela editora (US16). Ex.: Bullying, Imaginação."""
 
     __tablename__ = "themes"
-    __table_args__ = (
-        # US16: "Não é permitido cadastrar dois temas com o mesmo nome."
-        # Índice funcional para que a unicidade ignore maiúsculas/minúsculas
-        # sem perder a grafia escolhida pela editora na exibição.
-        Index("uq_themes_name_lower", text("lower(name)"), unique=True),
-    )
+    __table_args__ = (Index("uq_themes_name_lower", text("lower(name)"), unique=True),)
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
@@ -56,8 +51,6 @@ class EducationLevel(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
-    # A ordem pedagógica (Infantil → Médio) não sai da ordem alfabética nem da
-    # ordem de cadastro; precisa ser explícita.
     sort_order: Mapped[int] = mapped_column(
         SmallInteger, nullable=False, default=0, server_default="0"
     )
@@ -77,9 +70,6 @@ class Book(TimestampMixin, Base):
             "page_count IS NULL OR page_count > 0", name="ck_books_page_count_positive"
         ),
         Index("ix_books_education_level_id", "education_level_id"),
-        # US07: busca por trecho do título/autor ignorando acento e caixa.
-        # `immutable_unaccent` é criada na migration 0001 — `unaccent` não é
-        # IMMUTABLE e, sem o wrapper, não pode entrar em índice.
         Index(
             "ix_books_title_search",
             text("immutable_unaccent(lower(title))"),
@@ -98,21 +88,14 @@ class Book(TimestampMixin, Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     author: Mapped[str] = mapped_column(String(255), nullable=False)
     synopsis: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Nulo é permitido, mas dois livros não podem dividir o mesmo ISBN.
     isbn: Mapped[str | None] = mapped_column(String(20), nullable=True, unique=True)
     page_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     edition: Mapped[str | None] = mapped_column(String(50), nullable=True)
     year: Mapped[int | None] = mapped_column(Integer, nullable=True)
     cover_url: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # US09: botão "Comprar livro" leva à loja oficial — a venda fica fora daqui.
     store_url: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Página da obra no site da editora e link para material pedagógico:
-    # ambos são só apontadores — o conteúdo continua fora do sistema.
     book_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     pedagogical_material_url: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # US17: "Uma obra pode existir no acervo sem escolaridade vinculada."
-    # Por isso nulo, e SET NULL ao apagar a escolaridade — apagar uma
-    # escolaridade não pode apagar obras do acervo.
     education_level_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("education_levels.id", ondelete="SET NULL"), nullable=True
     )
@@ -140,7 +123,6 @@ class InstitutionalPage(TimestampMixin, Base):
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    # Ex.: home, editora, pnld, catalogo, blog, anima-kids, contato.
     slug: Mapped[str] = mapped_column(String(80), nullable=False, unique=True)
     title: Mapped[str] = mapped_column(String(160), nullable=False)
     body: Mapped[str | None] = mapped_column(Text, nullable=True)

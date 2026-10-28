@@ -41,7 +41,7 @@ class SeedAdminError(Exception):
 
 def export_openapi(output: Path) -> None:
     """Exporta `app.openapi()` em YAML (ou JSON, se o arquivo terminar em `.json`)."""
-    from app.main import app  # importa tarde para não pagar o custo nos outros comandos
+    from app.main import app
 
     spec = app.openapi()
     if output.suffix == ".json":

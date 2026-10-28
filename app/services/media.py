@@ -16,7 +16,6 @@ from app.errors import AppError, ErrorCode
 
 logger = logging.getLogger(__name__)
 
-# Content-Type aceito → extensão gravada. A assinatura é conferida nos bytes.
 _MIME_EXTENSIONS = {"image/png": ".png", "image/jpeg": ".jpg"}
 _PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 _JPEG_SIGNATURE = b"\xff\xd8\xff"
@@ -90,7 +89,7 @@ def delete_cover(cover_url: str | None) -> None:
     prefix = f"/media/{_COVERS_SUBDIR}/"
     if not cover_url or not cover_url.startswith(prefix):
         return
-    name = Path(cover_url).name  # descarta qualquer diretório do caminho
+    name = Path(cover_url).name
     try:
         (Path(get_settings().media_dir) / _COVERS_SUBDIR / name).unlink(missing_ok=True)
     except OSError:

@@ -35,7 +35,6 @@ def create_teacher(db: Session, sender: EmailSender, email: str) -> tuple[User, 
     try:
         db.flush()
     except IntegrityError as exc:
-        # Dois cadastros simultâneos do mesmo e-mail: a UNIQUE do banco decide.
         db.rollback()
         raise _email_taken() from exc
 
