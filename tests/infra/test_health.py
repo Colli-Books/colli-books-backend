@@ -1,39 +1,36 @@
-"""Testes do endpoint de health check (GET /health).
-
-O banco de dados não está disponível durante os testes unitários, portanto
-mockamos a conexão para cobrir os dois cenários: banco acessível e banco
-inacessível.
-"""
+"""Health check (GET /health), com a conexão do banco simulada."""
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 
-def test_health_banco_ok(client: TestClient) -> None:
-    """GET /health deve retornar 200 quando o banco responde."""
-    mock_conn = MagicMock()
-    mock_ctx = MagicMock()
-    mock_ctx.__enter__ = MagicMock(return_value=mock_conn)
-    mock_ctx.__exit__ = MagicMock(return_value=False)
+def _banco_ok() -> dict:
+    ctx = MagicMock()
+    ctx.__enter__ = MagicMock(return_value=MagicMock())
+    ctx.__exit__ = MagicMock(return_value=False)
+    return {"return_value": ctx}
 
-    with patch("app.controllers.health.engine.connect", return_value=mock_ctx):
+
+def _banco_fora() -> dict:
+    return {"side_effect": Exception("connection refused")}
+
+
+@pytest.mark.parametrize(
+    ("mock_kwargs", "status_code", "status", "database"),
+    [
+        pytest.param(_banco_ok, 200, "ok", "connected", id="banco-ok"),
+        pytest.param(_banco_fora, 503, "error", "connection refused", id="banco-indisponivel"),
+    ],
+)
+def test_health_reflete_o_estado_do_banco(
+    client: TestClient, mock_kwargs, status_code: int, status: str, database: str
+) -> None:
+    with patch("app.controllers.health.engine.connect", **mock_kwargs()):
         response = client.get("/health")
 
-    assert response.status_code == 200
+    assert response.status_code == status_code
     data = response.json()
-    assert data["status"] == "ok"
-    assert data["database"] == "connected"
-
-
-def test_health_banco_indisponivel(client: TestClient) -> None:
-    """GET /health deve retornar 503 quando o banco não está acessível."""
-    with patch(
-        "app.controllers.health.engine.connect", side_effect=Exception("connection refused")
-    ):
-        response = client.get("/health")
-
-    assert response.status_code == 503
-    data = response.json()
-    assert data["status"] == "error"
-    assert "connection refused" in data["database"]
+    assert data["status"] == status
+    assert database in data["database"]

@@ -24,32 +24,28 @@ TEST_DATABASE_URL = os.environ.get(
     "postgresql+psycopg://postgres:postgres@localhost:5432/colli_books_test",
 )
 
-# Precisa acontecer antes de importar `app`: o engine é criado no import.
-# Sobrescreve (não usa setdefault) para nunca rodar os testes no banco de dev.
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 os.environ["APP_ENV"] = "test"
 os.environ["RATE_LIMIT_ENABLED"] = "false"
-# Nenhum teste conversa com o Brevo real, mesmo que o `.env` local tenha chave.
 os.environ["BREVO_API_KEY"] = ""
-# Idem para o JWT_SECRET do `.env` local (placeholder ou segredo real):
-# os testes de config assumem o segredo de desenvolvimento.
 from app.config import DEV_JWT_SECRET  # noqa: E402
 
 os.environ["JWT_SECRET"] = DEV_JWT_SECRET
-# Uploads de capa de teste não podem sujar a pasta media/ do projeto.
 os.environ["MEDIA_DIR"] = tempfile.mkdtemp(prefix="colli-test-media-")
 
 from alembic import command  # noqa: E402
 from alembic.config import Config  # noqa: E402
-from fastapi import BackgroundTasks  # noqa: E402
+from fastapi import BackgroundTasks, FastAPI  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import create_engine, text  # noqa: E402
 from sqlalchemy.engine import make_url  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
 from app.database import engine, get_db  # noqa: E402
+from app.errors import register_error_handlers  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import User, UserRole  # noqa: E402
+from app.security.dependencies import AdminUser, CurrentUser  # noqa: E402
 from app.services.email import BackgroundEmailSender, EmailSender, get_email_sender  # noqa: E402
 from tests.factories import create_user  # noqa: E402
 from tests.fakes import InMemoryEmailSender  # noqa: E402
@@ -73,8 +69,6 @@ def _recreate_database(url: str) -> None:
 
 
 def _run_migrations() -> None:
-    # Config sem arquivo .ini: assim o env.py não chama `fileConfig`, que
-    # desligaria os loggers da aplicação (e quebraria testes que usam caplog).
     config = Config()
     config.set_main_option("script_location", str(ROOT / "alembic"))
     command.upgrade(config, "head")
@@ -145,3 +139,21 @@ def admin_user(db_session: Session) -> User:
 @pytest.fixture()
 def teacher_user(db_session: Session) -> User:
     return create_user(db_session, email="professor@escola.com", role=UserRole.TEACHER)
+
+
+@pytest.fixture()
+def protected_client(db_session: Session) -> TestClient:
+    """App mínima com uma rota autenticada (`/me`) e uma de admin (`/admin`)."""
+    protected_app = FastAPI()
+    register_error_handlers(protected_app)
+
+    @protected_app.get("/me")
+    def me(user: CurrentUser) -> dict[str, int]:
+        return {"id": user.id}
+
+    @protected_app.get("/admin")
+    def admin(user: AdminUser) -> dict[str, int]:
+        return {"id": user.id}
+
+    protected_app.dependency_overrides[get_db] = lambda: db_session
+    return TestClient(protected_app)
