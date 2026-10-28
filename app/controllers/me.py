@@ -108,9 +108,6 @@ def update_interests(
     )
 
 
-# --- Minha Seleção (US12) ------------------------------------------------------
-
-
 @router.get(
     "/saved-books",
     summary="Listar Minha Seleção",

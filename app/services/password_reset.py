@@ -28,7 +28,6 @@ def request_password_reset(db: Session, sender: EmailSender, email: str) -> None
     if user is None or user.status != UserStatus.ACTIVE:
         return
 
-    # Só o link mais recente vale.
     db.execute(
         delete(PasswordResetToken).where(
             PasswordResetToken.user_id == user.id, PasswordResetToken.used_at.is_(None)

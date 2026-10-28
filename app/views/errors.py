@@ -12,8 +12,6 @@ class ErrorResponse(BaseModel):
     details: Any = Field(None, description="Informação extra; em 422, a lista de campos inválidos.")
 
 
-# Blocos para os `responses={...}` dos routers: o dict de cada rota sobrescreve
-# o do router por status, então descrições mais específicas por rota valem.
 VALIDATION_RESPONSE: dict = {
     status.HTTP_422_UNPROCESSABLE_ENTITY: {
         "model": ErrorResponse,

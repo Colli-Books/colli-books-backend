@@ -57,7 +57,6 @@ def decode_access_token(token: str) -> AccessTokenClaims:
             options={"require": ["sub", "exp", "type"]},
         )
     except jwt.ExpiredSignatureError as exc:
-        # Código próprio para o app saber que deve tentar o refresh.
         raise AppError(
             ErrorCode.TOKEN_EXPIRED,
             "Sessão expirada.",

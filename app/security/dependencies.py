@@ -20,7 +20,6 @@ from app.errors import AppError, ErrorCode
 from app.models import User, UserRole, UserStatus
 from app.security.tokens import decode_access_token
 
-# auto_error=False: sem header, quem responde é a nossa função, no formato do contrato.
 _bearer = HTTPBearer(auto_error=False, description="Access token obtido em `/api/v1/auth/login`.")
 
 DbSession = Annotated[Session, Depends(get_db)]
@@ -40,8 +39,6 @@ def get_current_user(
 
     claims = decode_access_token(credentials.credentials)
 
-    # O usuário é sempre relido do banco: uma conta desativada perde o acesso
-    # na hora, sem esperar o access token expirar.
     user = db.get(User, claims.user_id)
     if user is None or user.status != UserStatus.ACTIVE:
         raise AppError(

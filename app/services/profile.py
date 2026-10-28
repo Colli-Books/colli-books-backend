@@ -21,7 +21,6 @@ def update_profile(db: Session, user: User, form: ProfileUpdateRequest) -> User:
     if "full_name" in form.model_fields_set:
         user.full_name = form.full_name
     if "school" in form.model_fields_set:
-        # `school` vazia já virou None na view — campo enviado limpa a escola.
         user.school = form.school
     db.commit()
     return user
@@ -93,7 +92,6 @@ def save_book(db: Session, user: User, book_id: int) -> None:
         db.execute(saved_books.insert().values(user_id=user.id, book_id=book_id))
         db.commit()
     except IntegrityError:
-        # Par (user, book) já existe — PUT idempotente, resultado é o mesmo.
         db.rollback()
 
 

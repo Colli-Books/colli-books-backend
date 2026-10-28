@@ -39,7 +39,6 @@ THEMES = [
     "Cooperação",
 ]
 
-# URLs de base do site da editora — referência editável direto no banco.
 INSTITUTIONAL_PAGES = [
     ("home", "Home", "https://www.collibooks.com/"),
     ("editora", "Editora", "https://www.collibooks.com/editora/"),
@@ -50,9 +49,6 @@ INSTITUTIONAL_PAGES = [
     ("contato", "Contato", "https://www.collibooks.com/"),
 ]
 
-# Mesma lista do mock do app. Uma obra tem UMA escolaridade (US17): quando o
-# mock lista mais de uma, fica a primeira. `cover_url` usa as URLs públicas do
-# mock; quem tinha imagem local no app fica sem capa aqui.
 BOOKS: list[dict] = [
     {
         "title": "O Segredo de Aurora",

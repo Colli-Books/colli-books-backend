@@ -52,9 +52,6 @@ def _strip_empty_ids(values: object) -> object:
     return [v for v in values if v != ""]
 
 
-# --- Saída ------------------------------------------------------------------
-
-
 class BookSummary(BaseModel):
     """Obra no formato do cartão do catálogo — também é o item da Minha Seleção."""
 
@@ -65,7 +62,6 @@ class BookSummary(BaseModel):
     year: int | None = Field(None, examples=[2026])
     education_level: EducationLevelSummary | None = None
     themes: list[ThemeSummary]
-    # Estado da "Minha Seleção" do usuário logado — elimina a consulta por obra.
     is_saved: bool = False
 
     @classmethod
@@ -121,9 +117,6 @@ class BookDetail(BookSummary):
             created_at=book.created_at,
             updated_at=book.updated_at,
         )
-
-
-# --- Entrada (multipart/form-data) -------------------------------------------
 
 
 class _BookFormBase(BaseModel):
