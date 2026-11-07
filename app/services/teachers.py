@@ -5,12 +5,12 @@ completa o cadastro (nome, escola e senha) na US02.
 """
 
 from fastapi import status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.errors import AppError, ErrorCode
-from app.models import Book, User, UserRole, UserStatus
+from app.models import Book, User, UserRole, UserStatus, Invite
 from app.services.auth import normalize_email
 from app.services.email import EmailSender
 from app.services.invites import IssuedInvite, issue_invite, send_invite_email
@@ -65,6 +65,23 @@ def reissue_teacher_invite(
     db.commit()
     send_invite_email(sender, user, invite, renewed=True)
     return user, invite
+
+def delete_teacher(
+    db: Session, teacher_id: int
+) -> User:
+    """Exclui cadastro de professor e deleta convites pendentes.
+
+    Faz commit.
+    """
+    user = db.get(User, teacher_id)
+    if user is None or user.role != UserRole.TEACHER:
+        raise AppError(ErrorCode.NOT_FOUND, "Professor não encontrado.", status.HTTP_404_NOT_FOUND)
+
+    db.execute(delete(User).where(User.id == user.id))
+    db.execute(delete(Invite).where(Invite.user_id == user.id, Invite.used_at.is_(None)))
+    db.commit()
+
+    return user
 
 
 def list_teachers(db: Session, *, status_filter: UserStatus | None, q: str | None) -> list[User]:

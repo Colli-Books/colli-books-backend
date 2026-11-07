@@ -45,8 +45,8 @@ _ADMIN_ERRORS = {
     "",
     summary="Listar escolaridades",
     description=(
-        "Escolaridades na ordem pedagógica (`sort_order`), desempatadas pelo nome. "
-        "Lista pequena, sem paginação."
+            "Escolaridades na ordem pedagógica (`sort_order`), desempatadas pelo nome. "
+            "Lista pequena, sem paginação."
     ),
     response_model=list[EducationLevelResponse],
     responses=_AUTH,
@@ -59,15 +59,15 @@ def list_education_levels(_: CurrentUser, db: DbSession) -> list[EducationLevelR
     "",
     summary="Criar escolaridade",
     description=(
-        "Não é permitido cadastrar duas escolaridades com o mesmo nome, mesmo "
-        "mudando a caixa: duplicata responde `409` (`EDUCATION_LEVEL_ALREADY_EXISTS`)."
+            "Não é permitido cadastrar duas escolaridades com o mesmo nome, mesmo "
+            "mudando a caixa: duplicata responde `409` (`EDUCATION_LEVEL_ALREADY_EXISTS`)."
     ),
     status_code=status.HTTP_201_CREATED,
     response_model=EducationLevelResponse,
     responses=_ADMIN_ERRORS,
 )
 def create_education_level(
-    body: EducationLevelCreateRequest, _: AdminUser, db: DbSession
+        body: EducationLevelCreateRequest, _: AdminUser, db: DbSession
 ) -> EducationLevelResponse:
     return catalog_service.create_education_level(db, body.name, body.sort_order)
 
@@ -76,8 +76,8 @@ def create_education_level(
     "/{level_id}",
     summary="Renomear escolaridade",
     description=(
-        'PATCH parcial: campo ausente no corpo significa "não alterar". '
-        "Renomear preserva os vínculos com obras e professores (US16)."
+            'PATCH parcial: campo ausente no corpo significa "não alterar". '
+            "Renomear preserva os vínculos com obras e professores (US16)."
     ),
     response_model=EducationLevelResponse,
     responses={
@@ -89,8 +89,31 @@ def create_education_level(
     },
 )
 def update_education_level(
-    level_id: int, body: EducationLevelUpdateRequest, _: AdminUser, db: DbSession
+        level_id: int, body: EducationLevelUpdateRequest, _: AdminUser, db: DbSession
 ) -> EducationLevelResponse:
     return catalog_service.update_education_level(
         db, level_id, name=body.name, sort_order=body.sort_order
     )
+
+
+@router.delete(
+    "/{level_id}",
+    summary="Remover escolaridade",
+    description=(
+            "Remove a escolaridade identificada"
+    ),
+    response_model=EducationLevelResponse,
+    responses={
+        **_ADMIN_ERRORS,
+        status.HTTP_404_NOT_FOUND: {
+            "model": ErrorResponse,
+            "description": "`NOT_FOUND`.",
+        },
+    },
+)
+def delete_education_level(
+        level_id: int, _: AdminUser, db: DbSession
+) -> EducationLevelResponse:
+    return EducationLevelResponse.model_validate(catalog_service.delete_education_level(
+        db, level_id
+    ))

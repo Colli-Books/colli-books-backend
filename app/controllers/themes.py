@@ -82,3 +82,24 @@ def update_theme(
     theme_id: int, body: ThemeUpdateRequest, _: AdminUser, db: DbSession
 ) -> ThemeResponse:
     return catalog_service.update_theme(db, theme_id, name=body.name, description=body.description)
+
+
+@router.delete(
+    "/{theme_id}",
+    summary="Excluir tema",
+    description=(
+        "Exclui tema identificado"
+    ),
+    response_model=ThemeResponse,
+    responses={
+        **_ADMIN_ERRORS,
+        status.HTTP_404_NOT_FOUND: {
+            "model": ErrorResponse,
+            "description": "`NOT_FOUND`.",
+        },
+    },
+)
+def update_theme(
+    theme_id: int, _: AdminUser, db: DbSession
+) -> ThemeResponse:
+    return ThemeResponse.model_validate(catalog_service.delete_theme(db, theme_id))

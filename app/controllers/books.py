@@ -140,3 +140,26 @@ def update_book(
     return BookDetail.from_book(
         book, is_saved=book.id in books_service.saved_book_ids(db, admin.id, [book.id])
     )
+
+
+@router.delete(
+    "/{book_id}",
+    summary="Remove obra",
+    description=(
+        "Remove a obra identificada"
+    ),
+    response_model=BookDetail,
+    responses={
+        **_ADMIN_ERRORS,
+        status.HTTP_404_NOT_FOUND: {
+            "model": ErrorResponse,
+            "description": "`NOT_FOUND`.",
+        },
+    },
+)
+def delete_book(
+    book_id: int,
+    _: AdminUser,
+    db: DbSession,
+) -> BookDetail:
+    return books_service.delete_book(db, book_id)
