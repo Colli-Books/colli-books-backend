@@ -6,7 +6,7 @@ view marcar o flag sem consulta por obra (sem N+1).
 """
 
 from fastapi import status
-from sqlalchemy import func, select, delete
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -90,6 +90,7 @@ def get_book(db: Session, user: User, book_id: int) -> tuple[Book, bool]:
     if book is None:
         raise AppError(ErrorCode.NOT_FOUND, "Obra não encontrada.", status.HTTP_404_NOT_FOUND)
     return book, book.id in saved_book_ids(db, user.id, [book.id])
+
 
 def delete_book(db: Session, book_id: int) -> Book:
     book = db.scalar(select(Book).where(Book.id == book_id).options(*_LOAD_FULL))

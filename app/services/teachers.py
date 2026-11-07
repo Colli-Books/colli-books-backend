@@ -5,12 +5,12 @@ completa o cadastro (nome, escola e senha) na US02.
 """
 
 from fastapi import status
-from sqlalchemy import func, select, delete
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.errors import AppError, ErrorCode
-from app.models import Book, User, UserRole, UserStatus, Invite
+from app.models import Book, Invite, User, UserRole, UserStatus
 from app.services.auth import normalize_email
 from app.services.email import EmailSender
 from app.services.invites import IssuedInvite, issue_invite, send_invite_email
@@ -66,9 +66,8 @@ def reissue_teacher_invite(
     send_invite_email(sender, user, invite, renewed=True)
     return user, invite
 
-def delete_teacher(
-    db: Session, teacher_id: int
-) -> User:
+
+def delete_teacher(db: Session, teacher_id: int) -> User:
     """Exclui cadastro de professor e deleta convites pendentes.
 
     Faz commit.

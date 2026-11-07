@@ -87,9 +87,7 @@ def update_theme(
 @router.delete(
     "/{theme_id}",
     summary="Excluir tema",
-    description=(
-        "Exclui tema identificado"
-    ),
+    description=("Exclui tema identificado"),
     response_model=ThemeResponse,
     responses={
         **_ADMIN_ERRORS,
@@ -99,7 +97,5 @@ def update_theme(
         },
     },
 )
-def update_theme(
-    theme_id: int, _: AdminUser, db: DbSession
-) -> ThemeResponse:
+def delete_theme(theme_id: int, _: AdminUser, db: DbSession) -> ThemeResponse:
     return ThemeResponse.model_validate(catalog_service.delete_theme(db, theme_id))

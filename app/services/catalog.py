@@ -6,7 +6,7 @@ uma mensagem amigável, e a `IntegrityError` restante cobre a corrida.
 """
 
 from fastapi import status
-from sqlalchemy import func, select, delete
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -49,6 +49,7 @@ def update_theme(db: Session, theme_id: int, *, name: str | None, description: s
         raise _theme_exists() from exc
     return theme
 
+
 def delete_theme(db: Session, theme_id: int) -> Theme:
     theme = db.get(Theme, theme_id)
     if theme is None:
@@ -58,6 +59,7 @@ def delete_theme(db: Session, theme_id: int) -> Theme:
     db.commit()
 
     return theme
+
 
 def _theme_by_name(db: Session, name: str) -> Theme | None:
     return db.scalar(select(Theme).where(func.lower(Theme.name) == name.strip().lower()))
@@ -116,8 +118,10 @@ def update_education_level(
         raise _level_exists() from exc
     return level
 
+
 def delete_education_level(
-    db: Session, level_id: int,
+    db: Session,
+    level_id: int,
 ) -> EducationLevel:
     level = db.get(EducationLevel, level_id)
     if level is None:
@@ -128,6 +132,7 @@ def delete_education_level(
     db.commit()
 
     return level
+
 
 def _level_by_name(db: Session, name: str) -> EducationLevel | None:
     return db.scalar(

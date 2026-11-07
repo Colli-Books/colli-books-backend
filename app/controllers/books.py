@@ -145,9 +145,7 @@ def update_book(
 @router.delete(
     "/{book_id}",
     summary="Remove obra",
-    description=(
-        "Remove a obra identificada"
-    ),
+    description=("Remove a obra identificada"),
     response_model=BookDetail,
     responses={
         **_ADMIN_ERRORS,

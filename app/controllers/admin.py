@@ -97,12 +97,11 @@ def reissue_invite(
 ) -> TeacherInviteResponse:
     return _invite_response(*teachers_service.reissue_teacher_invite(db, sender, teacher_id))
 
+
 @router.delete(
     "/teachers/{teacher_id}",
     summary="Excluir cadastro do professor",
-    description=(
-        "Invalida os convites do professor e exclui cadastro"
-    ),
+    description=("Invalida os convites do professor e exclui cadastro"),
     response_model=UserResponse,
     responses={
         **_AUTH_ERRORS,
@@ -117,7 +116,9 @@ def delete_teacher(
     db: DbSession,
     _: AdminUser,
 ) -> UserResponse:
-    return UserResponse.model_validate(teachers_service.delete_teacher(db=db, teacher_id=teacher_id))
+    return UserResponse.model_validate(
+        teachers_service.delete_teacher(db=db, teacher_id=teacher_id)
+    )
 
 
 @router.get(
