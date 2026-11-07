@@ -170,18 +170,22 @@ python -m app.cli export-openapi --output api.json   # ou JSON pelo sufixo
 | `POST` | `/api/v1/invites/resend` | Convites | Reenvia convite expirado por e-mail (US02) | `202`, `429` |
 | `POST` | `/api/v1/admin/teachers` | Admin | Cadastra professor, manda o convite por e-mail e devolve o link (US01) | `201`, `401`, `403`, `409` |
 | `POST` | `/api/v1/admin/teachers/{id}/invite` | Admin | Gera novo convite, invalida o anterior e manda por e-mail | `200`, `401`, `403`, `404`, `409` |
+| `DELETE` | `/api/v1/admin/teachers/{id}` | Admin | Exclui professor | `200`, `401`, `403`, `404` |
 | `GET`  | `/api/v1/admin/teachers` | Admin | Lista professores, com filtro `status` e busca `q` | `200`, `401`, `403` |
 | `GET`  | `/api/v1/admin/overview` | Admin | Contadores do painel: obras, professores, convites pendentes (US13) | `200`, `401`, `403` |
 | `GET`  | `/api/v1/books` | Obras | Catálogo com busca `q` (sem acento), filtros `theme_id`/`education_level_id` e `sort` (US07, US08, US11) | `200`, `401` |
 | `GET`  | `/api/v1/books/{id}` | Obras | Detalhe completo da obra (US09) | `200`, `401`, `404` |
 | `POST` | `/api/v1/books` | Obras | Cadastra obra — `multipart/form-data`, capa PNG/JPEG opcional (US15, US17) | `201`, `401`, `403`, `409`, `422` |
 | `PATCH` | `/api/v1/books/{id}` | Obras | Edição parcial — `multipart/form-data`; campo vazio limpa, `theme_ids=` remove os vínculos (US15, US17) | `200`, `401`, `403`, `404`, `409`, `422` |
+| `DELETE` | `/api/v1/books/{id}` | Obras | Exclui obra | `200`, `401`, `403`, `404` |
 | `GET`  | `/api/v1/themes` | Temas | Lista temas (US08, US16) | `200`, `401` |
 | `POST` | `/api/v1/themes` | Temas | Cria tema (US16) | `201`, `401`, `403`, `409`, `422` |
 | `PATCH` | `/api/v1/themes/{id}` | Temas | Renomeia tema preservando vínculos (US16) | `200`, `401`, `403`, `404`, `409` |
+| `DELETE` | `/api/v1/themes/{id}` | Temas | Exclui tema | `200`, `401`, `403`, `404` |
 | `GET`  | `/api/v1/education-levels` | Escolaridades | Lista escolaridades na ordem pedagógica (US08, US16) | `200`, `401` |
 | `POST` | `/api/v1/education-levels` | Escolaridades | Cria escolaridade (US16) | `201`, `401`, `403`, `409`, `422` |
 | `PATCH` | `/api/v1/education-levels/{id}` | Escolaridades | Renomeia/reordena escolaridade (US16) | `200`, `401`, `403`, `404`, `409` |
+| `DELETE` | `/api/v1/education-levels/{id}` | Escolaridades | Exclui escolaridade | `200`, `401`, `403`, `404` |
 | `PATCH` | `/api/v1/me` | Perfil | Atualiza nome e escola do usuário logado (US10) | `200`, `401`, `422` |
 | `PUT`  | `/api/v1/me/password` | Perfil | Troca a senha (exige a atual) e encerra as sessões | `204`, `400`, `401`, `422` |
 | `PUT`  | `/api/v1/me/interests` | Perfil | Substitui os temas/escolaridades que o professor leciona (US11) | `200`, `401`, `422` |
