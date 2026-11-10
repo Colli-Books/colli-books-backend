@@ -98,6 +98,29 @@ def reissue_invite(
     return _invite_response(*teachers_service.reissue_teacher_invite(db, sender, teacher_id))
 
 
+@router.delete(
+    "/teachers/{teacher_id}",
+    summary="Excluir cadastro do professor",
+    description=("Invalida os convites do professor e exclui cadastro"),
+    response_model=UserResponse,
+    responses={
+        **_AUTH_ERRORS,
+        status.HTTP_404_NOT_FOUND: {
+            "model": ErrorResponse,
+            "description": "`NOT_FOUND` (professor não existe).",
+        },
+    },
+)
+def delete_teacher(
+    teacher_id: int,
+    db: DbSession,
+    _: AdminUser,
+) -> UserResponse:
+    return UserResponse.model_validate(
+        teachers_service.delete_teacher(db=db, teacher_id=teacher_id)
+    )
+
+
 @router.get(
     "/teachers",
     summary="Listar professores",

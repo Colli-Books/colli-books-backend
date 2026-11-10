@@ -6,7 +6,7 @@ uma mensagem amigável, e a `IntegrityError` restante cobre a corrida.
 """
 
 from fastapi import status
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -47,6 +47,17 @@ def update_theme(db: Session, theme_id: int, *, name: str | None, description: s
     except IntegrityError as exc:
         db.rollback()
         raise _theme_exists() from exc
+    return theme
+
+
+def delete_theme(db: Session, theme_id: int) -> Theme:
+    theme = db.get(Theme, theme_id)
+    if theme is None:
+        raise AppError(ErrorCode.NOT_FOUND, "Tema não encontrado.", status.HTTP_404_NOT_FOUND)
+
+    db.execute(delete(Theme).where(Theme.id == theme.id))
+    db.commit()
+
     return theme
 
 
@@ -105,6 +116,21 @@ def update_education_level(
     except IntegrityError as exc:
         db.rollback()
         raise _level_exists() from exc
+    return level
+
+
+def delete_education_level(
+    db: Session,
+    level_id: int,
+) -> EducationLevel:
+    level = db.get(EducationLevel, level_id)
+    if level is None:
+        raise AppError(
+            ErrorCode.NOT_FOUND, "Escolaridade não encontrada.", status.HTTP_404_NOT_FOUND
+        )
+    db.execute(delete(EducationLevel).where(EducationLevel.id == level.id))
+    db.commit()
+
     return level
 
 

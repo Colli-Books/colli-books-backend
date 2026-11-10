@@ -94,3 +94,22 @@ def update_education_level(
     return catalog_service.update_education_level(
         db, level_id, name=body.name, sort_order=body.sort_order
     )
+
+
+@router.delete(
+    "/{level_id}",
+    summary="Remover escolaridade",
+    description=("Remove a escolaridade identificada"),
+    response_model=EducationLevelResponse,
+    responses={
+        **_ADMIN_ERRORS,
+        status.HTTP_404_NOT_FOUND: {
+            "model": ErrorResponse,
+            "description": "`NOT_FOUND`.",
+        },
+    },
+)
+def delete_education_level(level_id: int, _: AdminUser, db: DbSession) -> EducationLevelResponse:
+    return EducationLevelResponse.model_validate(
+        catalog_service.delete_education_level(db, level_id)
+    )
