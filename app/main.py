@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.responses import HTMLResponse
 
 from app.config import get_settings
-from app.controllers import api_router, health
+from app.controllers import api_router, app_links, health
 from app.errors import register_error_handlers
 from app.rate_limit import register_rate_limit
 
@@ -68,6 +68,7 @@ app = FastAPI(
 register_error_handlers(app)
 register_rate_limit(app)
 app.include_router(health.router)
+app.include_router(app_links.router)
 app.include_router(api_router)
 
 _STATIC_DIR = Path(__file__).parent / "static"

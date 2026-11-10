@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     password_reset_ttl_minutes: int = 30
 
     app_link_base_url: str = "collibooks://"
+    app_scheme: str = "collibooks"
 
     password_min_length: int = 8
     password_max_length: int = 128
