@@ -193,6 +193,7 @@ python -m app.cli export-openapi --output api.json   # ou JSON pelo sufixo
 | `PUT`  | `/api/v1/me/saved-books/{book_id}` | Perfil | Salva obra na seleção — idempotente (US12) | `204`, `401`, `404` |
 | `DELETE` | `/api/v1/me/saved-books/{book_id}` | Perfil | Remove obra da seleção — idempotente (US12) | `204`, `401`, `404` |
 | `GET`  | `/media/covers/{arquivo}` | — | Capas enviadas pelo admin (estático, fora de `/api/v1`) | `200`, `404` |
+| `GET`  | `/abrir/{convite\|redefinir-senha}?token=` | — | Página HTML que abre o app pelo link do e-mail (fora de `/api/v1`) | `200`, `404` |
 
 **Listas não são paginadas** (acervo e professores são poucos registros; o app
 monta os filtros com os dados retornados). As convenções completas — erros,
@@ -255,6 +256,16 @@ Configuração no `.env`:
 | `BREVO_TEMPLATE_INVITE` | ID do template do convite novo |
 | `BREVO_TEMPLATE_INVITE_RENEWAL` | ID do template do convite renovado |
 | `BREVO_TEMPLATE_PASSWORD_RESET` | ID do template de redefinição de senha |
+
+| `APP_LINK_BASE_URL` | Base do `link` enviado no e-mail. Em produção: `https://<sua-api>/abrir` |
+| `APP_SCHEME` | Esquema que abre o app (padrão `collibooks`) |
+
+**Links clicáveis:** Gmail, Outlook e WhatsApp não deixam clicável um link
+`collibooks://`. Com `APP_LINK_BASE_URL=https://<sua-api>/abrir`, o e-mail leva
+`https://<sua-api>/abrir/convite?token=...`, uma página da própria API com o
+botão **Abrir no app** (`collibooks://convite?token=...`) e, no convite, o
+código para colar em *Tenho um convite*. A página não consulta nem consome o
+token, então a pré-visita de antivírus de e-mail não invalida o convite.
 
 O remetente precisa estar verificado no Brevo (SPF/DKIM do domínio da
 editora). Convite novo e renovado podem usar o mesmo template: basta repetir
