@@ -242,13 +242,20 @@ def _level_ids_of(
     atual; `education_level_id` (uma só) vem de versões antigas do app e só
     vale se a lista não foi enviada.
     """
-    fields = form.model_fields_set if sent is None else sent
-    if "education_level_ids" in fields:
+    if sent is None:
+        # Cadastro: o FastAPI preenche a lista vazia padrão, então decide pelo valor.
+        if form.education_level_ids:
+            return list(form.education_level_ids), "education_level_ids"
+        if form.education_level_id is not None:
+            return [form.education_level_id], "education_level_id"
+        return [], "education_level_ids"
+
+    if "education_level_ids" in sent:
         return list(form.education_level_ids or []), "education_level_ids"
-    if "education_level_id" in fields:
+    if "education_level_id" in sent:
         legacy = form.education_level_id
         return ([legacy] if legacy is not None else []), "education_level_id"
-    return (None if sent is not None else []), "education_level_ids"
+    return None, "education_level_ids"
 
 
 def _resolve_refs(
