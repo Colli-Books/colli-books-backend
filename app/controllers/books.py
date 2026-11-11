@@ -8,6 +8,7 @@ contrato, seção 9 do "Contratos API.md").
 from typing import Annotated
 
 from fastapi import APIRouter, Form, Query, status
+from pydantic import Field
 
 from app.security.dependencies import AdminUser, CurrentUser, DbSession
 from app.services import books as books_service
@@ -44,7 +45,12 @@ _ADMIN_ERRORS = {
     summary="Buscar obras",
     description=(
         "Catálogo completo com busca por título/autor (`q`, ignorando acentos e "
-        "caixa — US07) e filtros por tema e escolaridade (US08). A lista volta "
+        "caixa — US07) e filtros por tema e escolaridade (US08). Os filtros "
+        "aceitam vários ids, repetindo o parâmetro (`theme_ids=6&theme_ids=8`): "
+        "a obra entra se tiver **qualquer um** dos temas pedidos; com temas e "
+        "escolaridades juntos, precisa atender **os dois** filtros. `theme_id` e "
+        "`education_level_id` (um id só) seguem aceitos por compatibilidade. "
+        "A lista volta "
         "integralmente — sem paginação — e cada item já traz `is_saved`, o flag "
         "da Minha Seleção do usuário logado. `sort` aceita `relevance` "
         "(padrão: obras dos temas/escolaridades do professor primeiro, US11), "
@@ -57,12 +63,22 @@ def list_books(
     user: CurrentUser,
     db: DbSession,
     q: Annotated[str | None, Query(max_length=255)] = None,
-    theme_id: Annotated[int | None, Query(gt=0)] = None,
-    education_level_id: Annotated[int | None, Query(gt=0)] = None,
+    theme_ids: Annotated[list[Annotated[int, Field(gt=0)]], Query()] = [],  # noqa: B006
+    education_level_ids: Annotated[list[Annotated[int, Field(gt=0)]], Query()] = [],  # noqa: B006
+    theme_id: Annotated[int | None, Query(gt=0, deprecated=True)] = None,
+    education_level_id: Annotated[int | None, Query(gt=0, deprecated=True)] = None,
     sort: BookSort = "relevance",
 ) -> list[BookSummary]:
     books, saved_ids = books_service.search_books(
-        db, user, q=q, theme_id=theme_id, education_level_id=education_level_id, sort=sort
+        db,
+        user,
+        q=q,
+        theme_ids=[*theme_ids, *([theme_id] if theme_id else [])],
+        education_level_ids=[
+            *education_level_ids,
+            *([education_level_id] if education_level_id else []),
+        ],
+        sort=sort,
     )
     return [BookSummary.from_book(b, is_saved=b.id in saved_ids) for b in books]
 
@@ -93,7 +109,8 @@ def get_book(book_id: int, user: CurrentUser, db: DbSession) -> BookDetail:
     summary="Cadastrar obra",
     description=(
         "Cria a obra (US15/US17). O corpo é `multipart/form-data`: campos de "
-        "texto, `theme_ids` repetido (`theme_ids=6&theme_ids=8`) e a capa "
+        "texto, `theme_ids` e `education_level_ids` repetidos "
+        "(`theme_ids=6&theme_ids=8`) e a capa "
         "opcional no campo `cover` (PNG/JPEG, até 5 MB — `422 IMAGE_INVALID` "
         "ou `IMAGE_TOO_LARGE`). ISBN duplicado responde `409 "
         "ISBN_ALREADY_REGISTERED`; ids de tema/escolaridade inexistentes, "
@@ -117,8 +134,9 @@ def create_book(
     description=(
         "Edição parcial (US15/US17), também em `multipart/form-data`. Regras do "
         "PATCH multipart: campo **ausente** = não alterar; campo de texto ou "
-        "numérico enviado **vazio** (`campo=`) = limpar; `theme_ids=` (vazio) "
-        "remove todos os temas; `cover` ausente mantém a capa, arquivo novo a "
+        "numérico enviado **vazio** (`campo=`) = limpar; `theme_ids=` ou "
+        "`education_level_ids=` (vazio) remove todos os temas/escolaridades; "
+        "`cover` ausente mantém a capa, arquivo novo a "
         "substitui. As alterações refletem imediatamente na busca."
     ),
     response_model=BookDetail,

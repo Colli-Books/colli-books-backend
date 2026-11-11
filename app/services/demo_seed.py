@@ -70,7 +70,7 @@ BOOKS: list[dict] = [
         "pedagogical_material_url": (
             "https://www.collibooks.com/wp-content/uploads/2026/07/FICHA_O-SEGREDO-DE-AURORA.pdf"
         ),
-        "education_level": "Educação Infantil",
+        "education_levels": ["Educação Infantil"],
         "themes": [
             "Diversidade",
             "Inclusão",
@@ -99,7 +99,7 @@ BOOKS: list[dict] = [
         "store_url": "https://www.collibooksloja.com/",
         "book_url": "https://www.collibooks.com/editora/",
         "pedagogical_material_url": "https://www.collibooks.com/pnld-2/",
-        "education_level": "Ensino Fundamental I",
+        "education_levels": ["Ensino Fundamental I"],
         "themes": ["Aventura", "Mistério"],
     },
     {
@@ -117,7 +117,7 @@ BOOKS: list[dict] = [
         "store_url": "https://www.collibooksloja.com/",
         "book_url": "https://www.collibooks.com/editora/",
         "pedagogical_material_url": "https://www.collibooks.com/pnld-2/",
-        "education_level": "Ensino Fundamental I",
+        "education_levels": ["Ensino Fundamental I"],
         "themes": ["Bullying", "Imaginação"],
     },
     {
@@ -135,7 +135,7 @@ BOOKS: list[dict] = [
         "store_url": "https://www.collibooksloja.com/",
         "book_url": "https://www.collibooks.com/editora/",
         "pedagogical_material_url": "https://www.collibooks.com/pnld-2/",
-        "education_level": "Ensino Fundamental I",
+        "education_levels": ["Ensino Fundamental I"],
         "themes": ["Imaginação", "Bullying"],
     },
     {
@@ -153,7 +153,7 @@ BOOKS: list[dict] = [
         "store_url": "https://www.collibooksloja.com/",
         "book_url": "https://www.collibooks.com/editora/",
         "pedagogical_material_url": "https://www.collibooks.com/pnld-2/",
-        "education_level": "Ensino Fundamental I",
+        "education_levels": ["Ensino Fundamental I"],
         "themes": ["Higiene", "Alimentação"],
     },
     {
@@ -171,7 +171,7 @@ BOOKS: list[dict] = [
         "store_url": "https://www.collibooksloja.com/",
         "book_url": "https://www.collibooks.com/editora/",
         "pedagogical_material_url": "https://www.collibooks.com/pnld-2/",
-        "education_level": "Educação Infantil",
+        "education_levels": ["Educação Infantil"],
         "themes": ["Imaginação", "Inclusão"],
     },
     {
@@ -189,7 +189,7 @@ BOOKS: list[dict] = [
         "store_url": "https://www.collibooksloja.com/",
         "book_url": "https://www.collibooks.com/editora/",
         "pedagogical_material_url": "https://www.collibooks.com/pnld-2/",
-        "education_level": "Ensino Fundamental II",
+        "education_levels": ["Ensino Fundamental II"],
         "themes": ["Aventura", "Inclusão"],
     },
 ]
@@ -254,7 +254,7 @@ def seed_demo(db: Session) -> SeedReport:
             store_url=data["store_url"],
             book_url=data["book_url"],
             pedagogical_material_url=data["pedagogical_material_url"],
-            education_level=levels.get(data["education_level"]),
+            education_levels=[levels[n] for n in data["education_levels"] if n in levels],
         )
         book.themes = [themes[name] for name in data["themes"] if name in themes]
         db.add(book)

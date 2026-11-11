@@ -3,7 +3,12 @@ info:
   title: Colli Books API
   description: '
 
-    API do projeto **Colli Books**
+    API do projeto **Colli Books**.
+
+
+    As rotas de negócio ficam sob `/api/v1`. Todo erro segue o formato
+
+    `{"code": "...", "message": "...", "details": ...}`.
 
     '
   version: 0.1.0
@@ -549,6 +554,53 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/admin/teachers/{teacher_id}:
+    delete:
+      tags:
+      - Admin
+      summary: Excluir cadastro do professor
+      description: Invalida os convites do professor e exclui cadastro
+      operationId: delete_teacher_api_v1_admin_teachers__teacher_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: teacher_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Teacher Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '422':
+          description: '`VALIDATION_ERROR`; campos inválidos em `details`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`UNAUTHENTICATED` ou `TOKEN_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: '`FORBIDDEN` (exige papel `admin`).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: '`NOT_FOUND` (professor não existe).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/admin/overview:
     get:
       tags:
@@ -684,6 +736,58 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ThemeUpdateRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThemeResponse'
+        '422':
+          description: '`VALIDATION_ERROR`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`UNAUTHENTICATED` ou `TOKEN_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: '`FORBIDDEN` (exige papel `admin`).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: '`THEME_ALREADY_EXISTS`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: '`NOT_FOUND`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+      - Temas
+      summary: Excluir tema
+      description: Exclui tema identificado
+      operationId: delete_theme_api_v1_themes__theme_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: theme_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Theme Id
       responses:
         '200':
           description: Successful Response
@@ -859,16 +963,72 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+      - Escolaridades
+      summary: Remover escolaridade
+      description: Remove a escolaridade identificada
+      operationId: delete_education_level_api_v1_education_levels__level_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: level_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Level Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EducationLevelResponse'
+        '422':
+          description: '`VALIDATION_ERROR`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`UNAUTHENTICATED` ou `TOKEN_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: '`FORBIDDEN` (exige papel `admin`).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: '`EDUCATION_LEVEL_ALREADY_EXISTS`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: '`NOT_FOUND`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/books:
     get:
       tags:
       - Obras
       summary: Buscar obras
       description: 'Catálogo completo com busca por título/autor (`q`, ignorando acentos
-        e caixa — US07) e filtros por tema e escolaridade (US08). A lista volta integralmente
-        — sem paginação — e cada item já traz `is_saved`, o flag da Minha Seleção
-        do usuário logado. `sort` aceita `relevance` (padrão: obras dos temas/escolaridades
-        do professor primeiro, US11), `title` e `year`.'
+        e caixa — US07) e filtros por tema e escolaridade (US08). Os filtros aceitam
+        vários ids, repetindo o parâmetro (`theme_ids=6&theme_ids=8`): a obra entra
+        se tiver **qualquer um** dos temas pedidos; com temas e escolaridades juntos,
+        precisa atender **os dois** filtros. `theme_id` e `education_level_id` (um
+        id só) seguem aceitos por compatibilidade. A lista volta integralmente — sem
+        paginação — e cada item já traz `is_saved`, o flag da Minha Seleção do usuário
+        logado. `sort` aceita `relevance` (padrão: obras dos temas/escolaridades do
+        professor primeiro, US11), `title` e `year`.'
       operationId: list_books_api_v1_books_get
       security:
       - HTTPBearer: []
@@ -882,6 +1042,26 @@ paths:
             maxLength: 255
           - type: 'null'
           title: Q
+      - name: theme_ids
+        in: query
+        required: false
+        schema:
+          type: array
+          items:
+            type: integer
+            exclusiveMinimum: 0
+          default: []
+          title: Theme Ids
+      - name: education_level_ids
+        in: query
+        required: false
+        schema:
+          type: array
+          items:
+            type: integer
+            exclusiveMinimum: 0
+          default: []
+          title: Education Level Ids
       - name: theme_id
         in: query
         required: false
@@ -890,7 +1070,9 @@ paths:
           - type: integer
             exclusiveMinimum: 0
           - type: 'null'
+          deprecated: true
           title: Theme Id
+        deprecated: true
       - name: education_level_id
         in: query
         required: false
@@ -899,7 +1081,9 @@ paths:
           - type: integer
             exclusiveMinimum: 0
           - type: 'null'
+          deprecated: true
           title: Education Level Id
+        deprecated: true
       - name: sort
         in: query
         required: false
@@ -938,10 +1122,10 @@ paths:
       - Obras
       summary: Cadastrar obra
       description: 'Cria a obra (US15/US17). O corpo é `multipart/form-data`: campos
-        de texto, `theme_ids` repetido (`theme_ids=6&theme_ids=8`) e a capa opcional
-        no campo `cover` (PNG/JPEG, até 5 MB — `422 IMAGE_INVALID` ou `IMAGE_TOO_LARGE`).
-        ISBN duplicado responde `409 ISBN_ALREADY_REGISTERED`; ids de tema/escolaridade
-        inexistentes, `422` com o campo apontado em `details`.'
+        de texto, `theme_ids` e `education_level_ids` repetidos (`theme_ids=6&theme_ids=8`)
+        e a capa opcional no campo `cover` (PNG/JPEG, até 5 MB — `422 IMAGE_INVALID`
+        ou `IMAGE_TOO_LARGE`). ISBN duplicado responde `409 ISBN_ALREADY_REGISTERED`;
+        ids de tema/escolaridade inexistentes, `422` com o campo apontado em `details`.'
       operationId: create_book_api_v1_books_post
       security:
       - HTTPBearer: []
@@ -1030,9 +1214,9 @@ paths:
       summary: Editar obra
       description: 'Edição parcial (US15/US17), também em `multipart/form-data`. Regras
         do PATCH multipart: campo **ausente** = não alterar; campo de texto ou numérico
-        enviado **vazio** (`campo=`) = limpar; `theme_ids=` (vazio) remove todos os
-        temas; `cover` ausente mantém a capa, arquivo novo a substitui. As alterações
-        refletem imediatamente na busca.'
+        enviado **vazio** (`campo=`) = limpar; `theme_ids=` ou `education_level_ids=`
+        (vazio) remove todos os temas/escolaridades; `cover` ausente mantém a capa,
+        arquivo novo a substitui. As alterações refletem imediatamente na busca.'
       operationId: update_book_api_v1_books__book_id__patch
       security:
       - HTTPBearer: []
@@ -1049,6 +1233,58 @@ paths:
           application/x-www-form-urlencoded:
             schema:
               $ref: '#/components/schemas/BookUpdateForm'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookDetail'
+        '422':
+          description: '`VALIDATION_ERROR`, `IMAGE_INVALID` ou `IMAGE_TOO_LARGE`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: '`UNAUTHENTICATED` ou `TOKEN_INVALID`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: '`FORBIDDEN` (exige papel `admin`).'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: '`ISBN_ALREADY_REGISTERED`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: '`NOT_FOUND`.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags:
+      - Obras
+      summary: Remove obra
+      description: Remove a obra identificada
+      operationId: delete_book_api_v1_books__book_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: book_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Book Id
       responses:
         '200':
           description: Successful Response
@@ -1391,6 +1627,8 @@ components:
           - type: integer
           - type: 'null'
           title: Education Level Id
+          description: 'Obsoleto: use `education_level_ids`.'
+          deprecated: true
         cover:
           anyOf:
           - type: string
@@ -1419,6 +1657,14 @@ components:
           examples:
           - 6
           - 8
+        education_level_ids:
+          items:
+            type: integer
+          type: array
+          title: Education Level Ids
+          examples:
+          - 2
+          - 3
       type: object
       required:
       - title
@@ -1456,10 +1702,19 @@ components:
           title: Year
           examples:
           - 2026
+        education_levels:
+          items:
+            $ref: '#/components/schemas/EducationLevelSummary'
+          type: array
+          title: Education Levels
+          description: Na ordem pedagógica (`sort_order`).
         education_level:
           anyOf:
           - $ref: '#/components/schemas/EducationLevelSummary'
           - type: 'null'
+          description: 'Obsoleto: a primeira de `education_levels`. Mantido para apps
+            antigos.'
+          deprecated: true
         themes:
           items:
             $ref: '#/components/schemas/ThemeSummary'
@@ -1572,10 +1827,19 @@ components:
           title: Year
           examples:
           - 2026
+        education_levels:
+          items:
+            $ref: '#/components/schemas/EducationLevelSummary'
+          type: array
+          title: Education Levels
+          description: Na ordem pedagógica (`sort_order`).
         education_level:
           anyOf:
           - $ref: '#/components/schemas/EducationLevelSummary'
           - type: 'null'
+          description: 'Obsoleto: a primeira de `education_levels`. Mantido para apps
+            antigos.'
+          deprecated: true
         themes:
           items:
             $ref: '#/components/schemas/ThemeSummary'
@@ -1652,6 +1916,8 @@ components:
           - type: integer
           - type: 'null'
           title: Education Level Id
+          description: 'Obsoleto: use `education_level_ids`.'
+          deprecated: true
         cover:
           anyOf:
           - type: string
@@ -1679,6 +1945,13 @@ components:
             type: array
           - type: 'null'
           title: Theme Ids
+        education_level_ids:
+          anyOf:
+          - items:
+              type: integer
+            type: array
+          - type: 'null'
+          title: Education Level Ids
       type: object
       title: BookUpdateForm
       description: Form de `PATCH /books/{id}`. Tudo opcional; ver convenção no topo

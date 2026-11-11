@@ -227,7 +227,7 @@ def test_renomear_escolaridade_preserva_vinculo_com_obras(
 
     assert response.status_code == 200
     db_session.refresh(book)
-    assert book.education_level.name == "Educação Infantil"
+    assert [lv.name for lv in book.education_levels] == ["Educação Infantil"]
 
 
 @pytest.mark.parametrize("recurso", RECURSOS)

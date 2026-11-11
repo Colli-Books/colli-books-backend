@@ -8,6 +8,7 @@ simplesmente não existe para as migrations.
 
 from app.models.catalog import Book, EducationLevel, InstitutionalPage, Theme
 from app.models.links import (
+    book_education_levels,
     book_themes,
     saved_books,
     teacher_education_levels,
@@ -33,6 +34,7 @@ __all__ = [
     "User",
     "UserRole",
     "UserStatus",
+    "book_education_levels",
     "book_themes",
     "saved_books",
     "teacher_education_levels",

@@ -7,7 +7,11 @@ Convenção do PATCH multipart (form não tem `null`):
 
 * campo ausente → não alterar;
 * campo texto/numérico enviado vazio (`""`) → limpar (vira `NULL`);
-* `theme_ids` só com vazio (`theme_ids=`) → remover todos os temas.
+* `theme_ids` / `education_level_ids` só com vazio (`campo=`) → remover todos.
+
+`education_level_id` (uma escolaridade) e o campo `education_level` da
+resposta continuam aceitos/enviados só por compatibilidade com versões
+antigas do app; o contrato atual é `education_level_ids` / `education_levels`.
 
 `model_fields_set` registra o que foi enviado; o service decide o que mudar.
 """
@@ -46,7 +50,10 @@ def _validate_url(value: str | None) -> str | None:
 
 
 def _strip_empty_ids(values: object) -> object:
-    """`theme_ids=` (vazio) vira `[]`: PATCH lê isso como "remover todos"."""
+    """`theme_ids=` (vazio) vira `[]`: PATCH lê isso como "remover todos".
+
+    Vale também para `education_level_ids`.
+    """
     if not isinstance(values, list):
         return values
     return [v for v in values if v != ""]
@@ -60,24 +67,32 @@ class BookSummary(BaseModel):
     author: str = Field(..., examples=["Andréa Avelar"])
     cover_url: str | None = Field(None, examples=["/media/covers/3fa9f1.png"])
     year: int | None = Field(None, examples=[2026])
-    education_level: EducationLevelSummary | None = None
+    education_levels: list[EducationLevelSummary] = Field(
+        default_factory=list, description="Na ordem pedagógica (`sort_order`)."
+    )
+    education_level: EducationLevelSummary | None = Field(
+        None,
+        deprecated=True,
+        description="Obsoleto: a primeira de `education_levels`. Mantido para apps antigos.",
+    )
     themes: list[ThemeSummary]
     is_saved: bool = False
 
     @classmethod
     def from_book(cls, book: "Book", is_saved: bool) -> "BookSummary":
         themes = sorted(book.themes, key=lambda t: t.name.lower())
+        levels = [
+            EducationLevelSummary.model_validate(lv)
+            for lv in sorted(book.education_levels, key=lambda lv: (lv.sort_order, lv.name.lower()))
+        ]
         return cls(
             id=book.id,
             title=book.title,
             author=book.author,
             cover_url=book.cover_url,
             year=book.year,
-            education_level=(
-                EducationLevelSummary.model_validate(book.education_level)
-                if book.education_level is not None
-                else None
-            ),
+            education_levels=levels,
+            education_level=levels[0] if levels else None,
             themes=[ThemeSummary.model_validate(t) for t in themes],
             is_saved=is_saved,
         )
@@ -134,7 +149,9 @@ class _BookFormBase(BaseModel):
     store_url: str | None = None
     book_url: str | None = None
     pedagogical_material_url: str | None = None
-    education_level_id: int | None = None
+    education_level_id: int | None = Field(
+        None, deprecated=True, description="Obsoleto: use `education_level_ids`."
+    )
     cover: UploadFile | None = None
 
     @field_validator(
@@ -165,8 +182,11 @@ class BookCreateForm(_BookFormBase):
     title: _Required = Field(..., examples=["O Segredo de Aurora"])
     author: _Required = Field(..., examples=["Andréa Avelar"])
     theme_ids: list[int] = Field(default_factory=list, examples=[6, 8])
+    education_level_ids: list[int] = Field(default_factory=list, examples=[2, 3])
 
-    _strip_theme_ids = field_validator("theme_ids", mode="before")(_strip_empty_ids)
+    _strip_ids = field_validator("theme_ids", "education_level_ids", mode="before")(
+        _strip_empty_ids
+    )
 
 
 class BookUpdateForm(_BookFormBase):
@@ -175,5 +195,8 @@ class BookUpdateForm(_BookFormBase):
     title: _Required | None = None
     author: _Required | None = None
     theme_ids: list[int] | None = None
+    education_level_ids: list[int] | None = None
 
-    _strip_theme_ids = field_validator("theme_ids", mode="before")(_strip_empty_ids)
+    _strip_ids = field_validator("theme_ids", "education_level_ids", mode="before")(
+        _strip_empty_ids
+    )

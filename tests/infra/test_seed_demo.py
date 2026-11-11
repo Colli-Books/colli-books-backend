@@ -23,7 +23,7 @@ def test_seed_demo_popula_tudo(db_session: Session) -> None:
 
     aurora = db_session.scalar(select(Book).where(Book.isbn == "978-65-6079-046-9"))
     assert aurora.title == "O Segredo de Aurora"
-    assert aurora.education_level.name == "Educação Infantil"
+    assert [lv.name for lv in aurora.education_levels] == ["Educação Infantil"]
     assert {t.name for t in aurora.themes} >= {"Inclusão", "Diversidade", "Empatia"}
 
 
