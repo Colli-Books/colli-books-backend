@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 from sqlalchemy import (
     BigInteger,
     CheckConstraint,
-    ForeignKey,
     Index,
     Integer,
     SmallInteger,
@@ -55,21 +54,25 @@ class EducationLevel(TimestampMixin, Base):
         SmallInteger, nullable=False, default=0, server_default="0"
     )
 
-    books: Mapped[list[Book]] = relationship(back_populates="education_level")
+    books: Mapped[list[Book]] = relationship(
+        secondary="book_education_levels", back_populates="education_levels"
+    )
     teachers: Mapped[list[User]] = relationship(
         secondary="teacher_education_levels", back_populates="education_levels"
     )
 
 
 class Book(TimestampMixin, Base):
-    """Obra do acervo (US15). Os campos espelham o detalhe exigido pela US09."""
+    """Obra do acervo (US15). Os campos espelham o detalhe exigido pela US09.
+
+    Uma obra pode ter vários temas e várias escolaridades.
+    """
 
     __tablename__ = "books"
     __table_args__ = (
         CheckConstraint(
             "page_count IS NULL OR page_count > 0", name="ck_books_page_count_positive"
         ),
-        Index("ix_books_education_level_id", "education_level_id"),
         Index(
             "ix_books_title_search",
             text("immutable_unaccent(lower(title))"),
@@ -96,11 +99,10 @@ class Book(TimestampMixin, Base):
     store_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     book_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     pedagogical_material_url: Mapped[str | None] = mapped_column(Text, nullable=True)
-    education_level_id: Mapped[int | None] = mapped_column(
-        BigInteger, ForeignKey("education_levels.id", ondelete="SET NULL"), nullable=True
-    )
 
-    education_level: Mapped[EducationLevel | None] = relationship(back_populates="books")
+    education_levels: Mapped[list[EducationLevel]] = relationship(
+        secondary="book_education_levels", back_populates="books"
+    )
     themes: Mapped[list[Theme]] = relationship(secondary="book_themes", back_populates="books")
     saved_by: Mapped[list[User]] = relationship(
         secondary="saved_books", back_populates="saved_books"

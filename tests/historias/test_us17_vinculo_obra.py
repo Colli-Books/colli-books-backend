@@ -122,3 +122,90 @@ def test_vinculo_inexistente_responde_422_apontando_cada_campo(
 
     assert response.status_code == 422
     assert {item["loc"][-1] for item in response.json()["details"]} == fields
+
+
+def _levels(body: dict) -> list[str]:
+    return [lv["name"] for lv in body["education_levels"]]
+
+
+def test_obra_com_varias_escolaridades_aparece_no_filtro_de_cada_uma(
+    client: TestClient, db_session: Session, admin_user: User
+) -> None:
+    fund2 = create_education_level(db_session, "Fundamental II", sort_order=3)
+    infantil = create_education_level(db_session, "Infantil", sort_order=1)
+    medio = create_education_level(db_session, "Médio", sort_order=4)
+
+    response = client.post(
+        BOOKS,
+        data={"title": "Multinível", "author": "A", "education_level_ids": [fund2.id, infantil.id]},
+        headers=auth_headers(admin_user),
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert _levels(body) == ["Infantil", "Fundamental II"]
+    assert body["education_level"]["name"] == "Infantil"
+    for level in (infantil, fund2):
+        assert _titles(client, admin_user, education_level_ids=[level.id]) == ["Multinível"]
+    assert _titles(client, admin_user, education_level_ids=[medio.id]) == []
+
+
+@pytest.mark.parametrize(
+    ("data", "expected"),
+    [
+        ({"education_level_ids": ["b"]}, ["B"]),
+        ({"education_level_ids": ["b", "c"]}, ["B", "C"]),
+        ({"education_level_ids": ""}, []),
+        ({"title": "Só o título"}, ["A"]),
+        ({"education_level_id": "c"}, ["C"]),
+        ({"education_level_ids": ["b"], "education_level_id": "c"}, ["B"]),
+    ],
+    ids=[
+        "troca",
+        "varias",
+        "limpa",
+        "ausente-mantem",
+        "legado-uma-so",
+        "lista-prevalece-sobre-legado",
+    ],
+)
+def test_editar_escolaridades_da_obra(
+    client: TestClient,
+    db_session: Session,
+    admin_user: User,
+    data: dict,
+    expected: list[str],
+) -> None:
+    levels = {
+        key: create_education_level(db_session, key.upper(), sort_order=i)
+        for i, key in enumerate("abc")
+    }
+    book = create_book(db_session, title="Obra", education_levels=[levels["a"]])
+
+    def resolve(value: object) -> object:
+        if isinstance(value, list):
+            return [str(levels[v].id) for v in value]
+        return str(levels[value].id) if value in levels else value
+
+    payload = {k: (resolve(v) if k.startswith("education_level") else v) for k, v in data.items()}
+
+    response = client.patch(f"{BOOKS}/{book.id}", data=payload, headers=auth_headers(admin_user))
+
+    assert response.status_code == 200
+    assert _levels(response.json()) == expected
+
+
+@pytest.mark.parametrize("method", ["post", "patch"])
+def test_escolaridade_inexistente_na_lista_responde_422(
+    client: TestClient, db_session: Session, admin_user: User, method: str
+) -> None:
+    nivel = create_education_level(db_session, "Infantil")
+    data = {"title": "T", "author": "A", "education_level_ids": [str(nivel.id), "888"]}
+    url = BOOKS
+    if method == "patch":
+        url = f"{BOOKS}/{create_book(db_session, title='Obra').id}"
+
+    response = getattr(client, method)(url, data=data, headers=auth_headers(admin_user))
+
+    assert response.status_code == 422
+    assert {d["loc"][-1] for d in response.json()["details"]} == {"education_level_ids"}

@@ -65,6 +65,7 @@ def create_book(
     author: str = "Autor de Teste",
     isbn: str | None = None,
     education_level: EducationLevel | None = None,
+    education_levels: list[EducationLevel] | None = None,
     themes: list[Theme] | None = None,
     **kwargs,
 ) -> Book:
@@ -72,7 +73,8 @@ def create_book(
         title=title or f"Obra {uuid4().hex[:8]}",
         author=author,
         isbn=isbn,
-        education_level=education_level,
+        education_levels=education_levels
+        or ([education_level] if education_level is not None else []),
         themes=themes or [],
         **kwargs,
     )

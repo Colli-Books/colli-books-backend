@@ -26,6 +26,24 @@ book_themes = Table(
     Index("ix_book_themes_theme_id", "theme_id"),
 )
 
+book_education_levels = Table(
+    "book_education_levels",
+    Base.metadata,
+    Column(
+        "book_id",
+        BigInteger,
+        ForeignKey("books.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "education_level_id",
+        BigInteger,
+        ForeignKey("education_levels.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Index("ix_book_education_levels_education_level_id", "education_level_id"),
+)
+
 teacher_themes = Table(
     "teacher_themes",
     Base.metadata,

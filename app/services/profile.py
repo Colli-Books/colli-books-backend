@@ -79,7 +79,7 @@ def list_saved_books(db: Session, user: User) -> list[Book]:
         select(Book)
         .join(saved_books, saved_books.c.book_id == Book.id)
         .where(saved_books.c.user_id == user.id)
-        .options(selectinload(Book.themes), selectinload(Book.education_level))
+        .options(selectinload(Book.themes), selectinload(Book.education_levels))
         .order_by(saved_books.c.created_at.desc(), saved_books.c.book_id.desc())
     )
     return list(db.scalars(stmt).unique())

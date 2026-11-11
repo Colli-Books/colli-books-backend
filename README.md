@@ -173,10 +173,10 @@ python -m app.cli export-openapi --output api.json   # ou JSON pelo sufixo
 | `DELETE` | `/api/v1/admin/teachers/{id}` | Admin | Exclui professor | `200`, `401`, `403`, `404` |
 | `GET`  | `/api/v1/admin/teachers` | Admin | Lista professores, com filtro `status` e busca `q` | `200`, `401`, `403` |
 | `GET`  | `/api/v1/admin/overview` | Admin | Contadores do painel: obras, professores, convites pendentes (US13) | `200`, `401`, `403` |
-| `GET`  | `/api/v1/books` | Obras | Catálogo com busca `q` (sem acento), filtros `theme_id`/`education_level_id` e `sort` (US07, US08, US11) | `200`, `401` |
+| `GET`  | `/api/v1/books` | Obras | Catálogo com busca `q` (sem acento), filtros `theme_ids`/`education_level_ids` (repetidos; qualquer um dos ids) e `sort` (US07, US08, US11) | `200`, `401` |
 | `GET`  | `/api/v1/books/{id}` | Obras | Detalhe completo da obra (US09) | `200`, `401`, `404` |
 | `POST` | `/api/v1/books` | Obras | Cadastra obra — `multipart/form-data`, capa PNG/JPEG opcional (US15, US17) | `201`, `401`, `403`, `409`, `422` |
-| `PATCH` | `/api/v1/books/{id}` | Obras | Edição parcial — `multipart/form-data`; campo vazio limpa, `theme_ids=` remove os vínculos (US15, US17) | `200`, `401`, `403`, `404`, `409`, `422` |
+| `PATCH` | `/api/v1/books/{id}` | Obras | Edição parcial — `multipart/form-data`; campo vazio limpa, `theme_ids=`/`education_level_ids=` removem os vínculos (US15, US17) | `200`, `401`, `403`, `404`, `409`, `422` |
 | `DELETE` | `/api/v1/books/{id}` | Obras | Exclui obra | `200`, `401`, `403`, `404` |
 | `GET`  | `/api/v1/themes` | Temas | Lista temas (US08, US16) | `200`, `401` |
 | `POST` | `/api/v1/themes` | Temas | Cria tema (US16) | `201`, `401`, `403`, `409`, `422` |
@@ -311,6 +311,7 @@ fonte de verdade: nenhuma tabela é criada à mão no banco.
 | `themes` | Temas cadastrados pela editora | US16 |
 | `education_levels` | Escolaridades cadastradas pela editora | US16 |
 | `book_themes` | Vínculo obra ↔ temas (N:N) | US17 |
+| `book_education_levels` | Vínculo obra ↔ escolaridades (N:N) | US17 |
 | `teacher_themes` | Temas que o professor leciona (N:N) | US11 |
 | `teacher_education_levels` | Escolaridades que o professor atende (N:N) | US11 |
 | `saved_books` | "Minha Seleção" do professor (N:N) | US12 |
@@ -326,7 +327,7 @@ como constraint — um bug na API não consegue furá-las:
 | `ck_users_active_requires_password` | Conta `active` sem hash de senha não existe (US01: enquanto a senha não for definida, o login é bloqueado). |
 | `ck_users_email_lowercase` | E-mail sempre normalizado em minúsculas, o que torna a UNIQUE insensível a caixa. |
 | `uq_themes_name_lower` / `uq_education_levels_name_lower` | Nomes duplicados ignorando maiúsculas/minúsculas são rejeitados (US16). |
-| `fk_books_education_level_id...ON DELETE SET NULL` | Apagar uma escolaridade não apaga obras; a obra permanece no acervo sem escolaridade (US17). |
+| `fk_book_education_levels_*` / `fk_book_themes_*` `ON DELETE CASCADE` | Apagar uma escolaridade ou um tema remove só o vínculo; a obra permanece no acervo (US17). |
 | `ck_institutional_pages_has_content` | Uma seção institucional tem conteúdo próprio ou aponta para uma URL externa — nunca nenhum dos dois (US18). |
 
 ### Busca sem acento (US07)

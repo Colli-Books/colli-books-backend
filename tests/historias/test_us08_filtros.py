@@ -119,3 +119,65 @@ def test_filtro_com_id_inexistente_devolve_lista_vazia(
 
     assert response.status_code == 200
     assert response.json() == []
+
+
+@pytest.mark.parametrize(
+    ("filters", "expected"),
+    [
+        (
+            {"theme_ids": ["inclusao", "aventura"]},
+            ["Aventura Médio", "Dois Temas Infantil", "Inclusão Infantil"],
+        ),
+        (
+            {"education_level_ids": ["infantil", "medio"]},
+            ["Aventura Médio", "Dois Temas Infantil", "Inclusão Infantil"],
+        ),
+        (
+            {"theme_ids": ["aventura"], "education_level_ids": ["infantil", "medio"]},
+            ["Aventura Médio", "Dois Temas Infantil"],
+        ),
+        (
+            {"theme_ids": ["inclusao", "aventura"], "education_level_ids": ["medio"]},
+            ["Aventura Médio"],
+        ),
+        ({"theme_ids": ["inclusao"], "education_level_ids": ["medio"]}, []),
+        (
+            {"theme_id": ["inclusao"], "theme_ids": ["aventura"]},
+            ["Aventura Médio", "Dois Temas Infantil", "Inclusão Infantil"],
+        ),
+    ],
+    ids=[
+        "varios-temas-qualquer-um",
+        "varias-escolaridades-qualquer-uma",
+        "tema-e-varias-escolaridades",
+        "varios-temas-e-escolaridade",
+        "combinacao-sem-obras",
+        "parametro-legado-somado-a-lista",
+    ],
+)
+def test_filtros_com_varios_temas_e_escolaridades(
+    client: TestClient,
+    teacher_user: User,
+    acervo: dict[str, int],
+    filters: dict[str, list[str]],
+    expected: list[str],
+) -> None:
+    params = {key: [acervo[v] for v in values] for key, values in filters.items()}
+
+    response = client.get(
+        BOOKS, params={**params, "sort": "title"}, headers=auth_headers(teacher_user)
+    )
+
+    assert response.status_code == 200
+    assert [b["title"] for b in response.json()] == expected
+
+
+@pytest.mark.parametrize("param", ["theme_ids", "education_level_ids"])
+def test_filtro_em_lista_com_id_nao_positivo_responde_422(
+    client: TestClient, teacher_user: User, acervo: dict[str, int], param: str
+) -> None:
+    response = client.get(
+        BOOKS, params={param: [acervo["infantil"], 0]}, headers=auth_headers(teacher_user)
+    )
+
+    assert response.status_code == 422
